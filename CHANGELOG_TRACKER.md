@@ -34,13 +34,15 @@ This ledger tracks every development task, minute codebase adjustment, test exec
 
 ---
 
-### [2026-08-15 09:05:00 UTC] - Core LLM Service with Streaming & Guardrails Implementation
-- **New Service**: `backend/app/services/llm_service.py`
-  - Streaming SSE / async generator for real-time question generation, coding test assessment, and candidate answer grading.
-  - Automatic fallback mechanism: If NVIDIA fails (timeout/rate limit), seamlessly queries Groq.
-  - Guardrail checks: Input sanitization, prompt injection defenses, JSON output schema conformance, and no autonomous hiring actions.
-- **Files Modified**:
-  - `backend/app/core/config.py`: Added `NVIDIA_API_KEY`, `NVIDIA_BASE_URL`, `NVIDIA_MODEL`, `GROQ_API_KEY`, `GROQ_BASE_URL`, `GROQ_MODEL`.
-  - `backend/app/services/llm_service.py`: Multi-provider orchestrator with streaming and guardrail interceptors.
-  - `backend/app/api/v1/questions.py`: Integrated streaming generation endpoint.
-  - `CHANGELOG_TRACKER.md`: Initialized and populated.
+### [2026-08-15 09:10:00 UTC] - GitHub Secrets, Environment Template & CI/CD Workflow Setup
+- **Action**: Created `.env.example` and GitHub Actions CI workflow (`.github/workflows/ci.yml`).
+- **Required Secrets Configured**:
+  - `NVIDIA_API_KEY`: Primary LLM inference API key.
+  - `GROQ_API_KEY`: Secondary & fallback LLM inference API key.
+  - `SECRET_KEY`: 32+ character JWT encryption key.
+  - `POSTGRES_PASSWORD`: Production database credential.
+  - `S3_ACCESS_KEY` & `S3_SECRET_KEY`: Object storage credentials for proctoring snapshots.
+- **Files Created**:
+  - `.env.example`
+  - `.github/workflows/ci.yml`
+- **Result**: Automated continuous integration with PostgreSQL 16 (pgvector), Redis, and automated pytest validation on push.
