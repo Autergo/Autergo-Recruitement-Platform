@@ -32,7 +32,6 @@ async def live_drive_websocket(websocket: WebSocket, drive_id: str):
     await ws_manager.connect(drive_id, websocket)
     try:
         while True:
-            # Heartbeat / command loop
             data = await websocket.receive_json()
     except WebSocketDisconnect:
         ws_manager.disconnect(drive_id, websocket)
