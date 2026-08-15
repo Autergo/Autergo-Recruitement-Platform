@@ -3,16 +3,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.models.organization import Organization, User
-from app.models.drive import RecruitmentDrive, DriveStage
+from app.models.drive import RecruitmentDrive, DriveStage, CandidateFormField
 from app.models.assessment import Assessment, Question
 from app.models.candidate import Candidate, Application
+from app.models.attempt import AssessmentAttempt, AttemptAnswer
+from app.models.audit import AuditLog
+from app.models.interview import Interview, InterviewEvaluation, CandidateScorecard
+from app.models.proctoring import ProctorSession, ProctorEvent
+from app.models.communication import CommunicationTemplate
 
 async def seed_data():
-    print("Connecting to database and creating tables...")
+    print("Connecting to database and creating all tables...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as session:
+        # Check if already seeded
+        from sqlalchemy import select
+        existing_org = await session.execute(select(Organization).limit(1))
+        if existing_org.scalar_one_or_none():
+            print("Database already contains data, all tables verified!")
+            return
+
         # Create Demo Organization
         org = Organization(
             name="Autergo Demo Corp",
