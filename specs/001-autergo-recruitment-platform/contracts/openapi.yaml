@@ -1,0 +1,241 @@
+openapi: 3.0.3
+info:
+  title: Autergo Enterprise Recruitment Platform REST API
+  description: Core REST API interface for Organizations, Recruitment Drives, Question Banks, Candidates, and Scoring.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+
+paths:
+  /auth/login:
+    post:
+      summary: User Login (Recruiter / Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string, example: bearer }
+                  expires_in: { type: integer, example: 3600 }
+                  user:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      email: { type: string }
+                      role: { type: string }
+                      tenant_id: { type: string, format: uuid }
+
+  /drives:
+    get:
+      summary: List Recruitment Drives
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, published, live, paused, completed, archived] }
+      responses:
+        '200':
+          description: List of recruitment drives
+    post:
+      summary: Create New Recruitment Drive
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, job_title, job_description]
+              properties:
+                title: { type: string, example: "AI Engineer Campus Drive 2026" }
+                job_title: { type: string, example: "AI Software Engineer" }
+                job_description: { type: string }
+                eligibility_rules: { type: object }
+                proctoring_config: { type: object }
+      responses:
+        '201':
+          description: Drive created successfully
+
+  /drives/{drive_id}/publish:
+    post:
+      summary: Publish Recruitment Drive
+      parameters:
+        - name: drive_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Drive published and live invitation link generated
+
+  /drives/{drive_id}/candidates/import:
+    post:
+      summary: Bulk Import Candidates via CSV
+      parameters:
+        - name: drive_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Candidates imported and invitations queued
+
+  /questions/generate-ai:
+    post:
+      summary: AI Question Generator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, experience_level, question_count, skill_distribution]
+              properties:
+                role: { type: string, example: "Python Backend Developer" }
+                experience_level: { type: string, example: "0-2 years" }
+                difficulty: { type: string, enum: [easy, medium, hard], default: medium }
+                question_count: { type: integer, example: 40 }
+                skill_distribution:
+                  type: object
+                  example: { "Python": 30, "SQL": 20, "DSA": 20, "OOP": 15, "System Design": 15 }
+      responses:
+        '200':
+          description: Generated question pool with validation and similarity checks
+
+  # Public Candidate Access Endpoints (Zero-Account Required)
+  /public/invitations/{token}:
+    get:
+      summary: Validate Candidate Invitation Token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Invitation valid; returns drive and verification metadata
+
+  /public/verify:
+    post:
+      summary: Candidate OTP / Identity Verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invitation_token, email, otp]
+              properties:
+                invitation_token: { type: string }
+                email: { type: string }
+                otp: { type: string }
+                device_meta: { type: object }
+      responses:
+        '200':
+          description: Verification success; returns temporary assessment session token
+
+  /public/assessment/session:
+    get:
+      summary: Fetch Active Assessment Content (Incremental / Resumable)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Assessment questions and remaining timer seconds
+
+  /public/assessment/answers/autosave:
+    post:
+      summary: Incremental Answer Auto-Save
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question_id, submitted_answer]
+              properties:
+                question_id: { type: string, format: uuid }
+                submitted_answer: { type: object }
+      responses:
+        '200':
+          description: Answer persisted successfully
+
+  /public/assessment/code/execute:
+    post:
+      summary: Run Code in Sandboxed Environment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question_id, language, source_code]
+              properties:
+                question_id: { type: string, format: uuid }
+                language: { type: string, enum: [python, javascript, java, cpp, sql] }
+                source_code: { type: string }
+      responses:
+        '200':
+          description: Test execution results against public assertions
+
+  /public/assessment/submit:
+    post:
+      summary: Final Assessment Submission
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Submission acknowledged and deterministic scoring executed
+
+  /public/proctoring/events:
+    post:
+      summary: Submit Client-Side Proctoring Telemetry & Evidence Reference
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_type, confidence, timestamp]
+              properties:
+                event_type: { type: string, enum: [FACE_ABSENT, MULTIPLE_FACES, PHONE_DETECTED, TAB_SWITCHED, FULLSCREEN_EXIT, AUDIO_VOICE_DETECTED, CAMERA_DISCONNECTED] }
+                confidence: { type: number, minimum: 0, maximum: 1 }
+                evidence_media_url: { type: string, nullable: true }
+                timestamp: { type: string, format: date-time }
+      responses:
+        '201':
+          description: Event ingested and risk score updated
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

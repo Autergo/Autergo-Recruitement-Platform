@@ -1,0 +1,3023 @@
+# AUTERGO — Enterprise Recruitment & Assessment Platform
+
+## 1. Product Definition
+
+**Autergo is an enterprise recruitment-drive operating system.**
+
+It is not just:
+
+* an assessment tool
+* an AI interview tool
+* a proctoring tool
+* an ATS
+* a mail automation tool
+
+It combines all of them around one central object:
+
+> **The Recruitment Drive**
+
+```text
+                         AUTERGO
+                            │
+                            ▼
+                    RECRUITMENT DRIVE
+                            │
+       ┌────────────────────┼────────────────────┐
+       │                    │                    │
+       ▼                    ▼                    ▼
+ Candidate Management   Assessment          Interview
+       │                    │                    │
+       │             ┌──────┼──────┐             │
+       │             │      │      │             │
+       │            MCQ   Coding  Game          AI / Human
+       │                    │                    │
+       └────────────────────┼────────────────────┘
+                            │
+                            ▼
+                     AI PROCTORING
+                            │
+                            ▼
+                    EVALUATION ENGINE
+                            │
+                            ▼
+                   CANDIDATE 360 PROFILE
+                            │
+                            ▼
+                      SHORTLISTING
+                            │
+                            ▼
+                     FINAL SELECTION
+                            │
+                            ▼
+                    COMMUNICATION ENGINE
+```
+
+---
+
+# 2. Product Philosophy
+
+Autergo should follow five principles.
+
+### 1. Candidate-first access
+
+Candidate does **not need an account**.
+
+### 2. Recruiter-first configuration
+
+HR can configure the entire drive without engineering support.
+
+### 3. Evidence-based AI
+
+AI assists the recruiter. AI should not silently make irreversible hiring decisions.
+
+### 4. Multi-signal proctoring
+
+Never:
+
+```text
+Eye movement = cheating
+```
+
+Instead:
+
+```text
+Multiple signals
+        ↓
+Suspicion score
+        ↓
+Evidence
+        ↓
+Human review
+```
+
+### 5. Enterprise-grade auditability
+
+Every important action must be traceable.
+
+---
+
+# 3. Core Autergo Architecture
+
+```text
+                         ┌───────────────────┐
+                         │    AUTERGO UI     │
+                         └─────────┬─────────┘
+                                   │
+                 ┌─────────────────┼─────────────────┐
+                 │                 │                 │
+                 ▼                 ▼                 ▼
+          Recruiter Web     Candidate Web      Interview UI
+                 │                 │                 │
+                 └─────────────────┼─────────────────┘
+                                   │
+                              API Gateway
+                                   │
+                           Authentication
+                                   │
+                        ┌──────────┴──────────┐
+                        │                     │
+                   Core Backend          Real-Time Layer
+                        │                     │
+          ┌─────────────┼─────────────┐       │
+          │             │             │       │
+          ▼             ▼             ▼       ▼
+       Drive         Assessment    Interview  WebSocket
+       Service        Service       Service
+          │             │             │
+          └─────────────┼─────────────┘
+                        │
+                  Proctoring Engine
+                        │
+             ┌──────────┼──────────┐
+             │          │          │
+             ▼          ▼          ▼
+           Vision     Browser     Audio
+             │          │          │
+             └──────────┼──────────┘
+                        ▼
+                   Risk Engine
+                        │
+                        ▼
+                Event Processing
+                        │
+        ┌───────────────┼────────────────┐
+        ▼               ▼                ▼
+   PostgreSQL         Redis          Object Storage
+        │               │                │
+        ▼               ▼                ▼
+      Core Data     Cache/Queue     Video/Files
+                        │
+                        ▼
+                    Analytics
+                        │
+                        ▼
+                  HR Dashboard
+```
+
+---
+
+# 4. The Central Object: Recruitment Drive
+
+Everything starts from a drive.
+
+Example:
+
+```text
+Drive
+│
+├── Company
+├── Job
+├── Eligibility
+├── Candidates
+├── Stages
+│   ├── Registration
+│   ├── Assessment
+│   ├── Technical Interview
+│   ├── HR Interview
+│   └── Final Decision
+│
+├── Question Bank
+├── Assessment Configuration
+├── Proctoring Configuration
+├── Interview Configuration
+├── Communication Templates
+├── Evaluations
+├── Analytics
+└── Audit Logs
+```
+
+This architecture is better than making everything independent.
+
+---
+
+# 5. Recruiter Journey
+
+The HR flow should be:
+
+```text
+Login
+  ↓
+Organization
+  ↓
+Create Drive
+  ↓
+Create Job
+  ↓
+Define Eligibility
+  ↓
+Configure Candidate Form
+  ↓
+Configure Assessment
+  ↓
+Select / Generate Questions
+  ↓
+Configure Proctoring
+  ↓
+Configure Interview Stages
+  ↓
+Configure Emails
+  ↓
+Publish Drive
+  ↓
+Invite Candidates
+  ↓
+Live Monitoring
+  ↓
+Shortlisting
+  ↓
+Interviews
+  ↓
+Final Evaluation
+  ↓
+Selection
+  ↓
+Reports
+```
+
+---
+
+# 6. Recruiter Dashboard
+
+Main screen:
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ AUTERGO                                 🔔  👤 Admin    │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│ Overview                                                │
+│                                                         │
+│ Active Drives         Candidates        Interviews      │
+│      12                  4,281             287          │
+│                                                         │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ Active Recruitment Drives                          │ │
+│ │                                                     │ │
+│ │ AI Engineer 2026       1200 candidates   LIVE       │ │
+│ │ Backend Engineer       640 candidates    ACTIVE     │ │
+│ │ Data Analyst           310 candidates    ACTIVE     │ │
+│ └─────────────────────────────────────────────────────┘ │
+│                                                         │
+│ Upcoming Interviews                                    │
+│                                                         │
+│ Alerts                                                  │
+│ 🔴 8 high-risk sessions                               │
+│ 🟠 21 candidates require review                       │
+│ 🟡 6 technical issues                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 7. Create Drive UI
+
+The recruiter gets a wizard.
+
+```text
+Step 1   Job
+Step 2   Eligibility
+Step 3   Candidate Form
+Step 4   Assessment
+Step 5   Proctoring
+Step 6   Interview
+Step 7   Communication
+Step 8   Review & Publish
+```
+
+---
+
+# 8. Everything Customizable — But Schema Controlled
+
+Your idea was:
+
+> every field customizable
+
+Correct direction, but don't let HR modify arbitrary database structure.
+
+Instead:
+
+```text
+System Fields
++
+Custom Fields
+```
+
+Example:
+
+```text
+Candidate Registration
+
+Name              [Required]
+Email             [Required]
+Phone             [Required]
+Resume            [Optional]
+
+Custom Field
+────────────────────────────
+Field Name: Graduation %
+Type: Number
+Required: Yes
+Validation: >= 60
+```
+
+Supported types:
+
+```text
+Text
+Number
+Email
+Phone
+Date
+Dropdown
+Multi-select
+Radio
+Checkbox
+File
+URL
+Resume
+College
+Degree
+CGPA
+Custom
+```
+
+---
+
+# 9. Candidate Experience
+
+This part should be extremely simple.
+
+Candidate receives:
+
+```text
+AUTERGO
+
+You have been invited to:
+
+AI Engineer Recruitment Drive
+
+[Start Assessment]
+```
+
+Candidate clicks.
+
+Then:
+
+```text
+Identity Verification
+        ↓
+Enter details
+        ↓
+OTP / verification
+        ↓
+System check
+        ↓
+Camera permission
+        ↓
+Microphone permission
+        ↓
+Screen permission if required
+        ↓
+Instructions
+        ↓
+Assessment
+```
+
+No account creation.
+
+---
+
+# 10. Important Correction: Your Token Design
+
+You proposed:
+
+> Click once → token expires permanently.
+
+I would **not** do this.
+
+Because:
+
+```text
+Candidate starts exam
+Internet disconnects
+Laptop crashes
+Browser closes
+Power cut
+```
+
+Candidate is now locked forever.
+
+That creates a bad enterprise experience.
+
+Use this instead:
+
+```text
+Invitation Token
+        ↓
+Candidate Verification
+        ↓
+Assessment Session
+        ↓
+Short-lived Session Token
+```
+
+### Example
+
+```text
+Invitation Token
+   lifetime: days
+
+          ↓
+
+Session Token
+   lifetime: assessment duration + grace period
+```
+
+The invitation token becomes consumed once the session starts, but the **session itself can resume**.
+
+---
+
+# 11. Better Candidate Session Model
+
+```text
+INVITED
+   ↓
+VERIFIED
+   ↓
+READY
+   ↓
+STARTED
+   ↓
+IN_PROGRESS
+   │
+   ├──── connection lost ────┐
+   │                         │
+   │                    RESUME SESSION
+   │                         │
+   └─────────────────────────┘
+   ↓
+SUBMITTED
+   ↓
+LOCKED
+```
+
+If candidate tries another device:
+
+```text
+Existing active session
+        ↓
+New login detected
+        ↓
+BLOCK
+        ↓
+"Active session already exists"
+```
+
+HR can override:
+
+```text
+Terminate Existing Session
+        ↓
+Reassign Session
+```
+
+That is much better.
+
+---
+
+# 12. Candidate Identity Verification
+
+Don't depend only on a link.
+
+Use:
+
+```text
+Invitation Token
+        +
+Candidate Details
+        +
+OTP / Email Verification
+        +
+Optional Face Verification
+        +
+Device Session Binding
+```
+
+For high-security assessments:
+
+```text
+Candidate identity
+      ↓
+Face capture
+      ↓
+Optional identity document verification
+```
+
+This must be explicit and consent-based.
+
+I would **not silently capture a candidate's photo without disclosure**. That creates privacy, compliance, and trust problems for an enterprise product.
+
+---
+
+# 13. Assessment Engine
+
+Autergo needs a **Question Type Framework**.
+
+```text
+                    QUESTION ENGINE
+                           │
+       ┌───────────┬───────┼────────┬───────────┐
+       │           │       │        │           │
+      MCQ       Coding   Subjective SQL       Games
+       │           │       │        │           │
+       ▼           ▼       ▼        ▼           ▼
+    Single      Editor    Text     Query      Memory
+    Multiple    Debug     Answer   Query      Pattern
+    True/False  Output    Essay    Result     Decision
+```
+
+---
+
+# 14. Question Types
+
+### Objective
+
+```text
+Single MCQ
+Multiple Correct
+True/False
+Match the Following
+Fill in the Blank
+```
+
+### Programming
+
+```text
+Coding
+Debugging
+Output Prediction
+Code Completion
+SQL
+Code Review
+```
+
+### Subjective
+
+```text
+Short Answer
+Long Answer
+Case Study
+Design Question
+Essay
+```
+
+### Interactive
+
+```text
+Memory Test
+Reaction Test
+Pattern Recognition
+Decision Simulation
+Scenario Based
+Ordering
+Ranking
+Drag-and-Drop
+```
+
+---
+
+# 15. Question Bank Architecture
+
+Each question should have metadata.
+
+```text
+Question
+│
+├── id
+├── tenant_id
+├── skill
+├── topic
+├── difficulty
+├── question_type
+├── marks
+├── expected_time
+├── answer
+├── explanation
+├── tags
+├── version
+├── generated_by_ai
+├── human_verified
+├── usage_count
+├── success_rate
+└── statistics
+```
+
+Example:
+
+```text
+Python
+ └── OOP
+      └── Inheritance
+           └── Medium
+                └── MCQ
+```
+
+---
+
+# 16. AI Question Generator
+
+HR enters:
+
+```text
+Role:
+Python Developer
+
+Experience:
+0–2 Years
+
+Difficulty:
+Medium
+
+Duration:
+60 mins
+
+Question Count:
+40
+
+Skills:
+
+Python       30%
+SQL          20%
+DSA          20%
+OOP          15%
+AI/ML        15%
+```
+
+Autergo generates candidates:
+
+```text
+AI Generator
+     ↓
+100 Questions
+     ↓
+Validation
+     ↓
+Duplicate Detection
+     ↓
+Answer Verification
+     ↓
+Difficulty Classification
+     ↓
+Question Pool
+```
+
+Then HR chooses.
+
+---
+
+# 17. Your Question Paper Idea Is Good
+
+Don't force AI to automatically publish the exam.
+
+Give HR:
+
+```text
+Generated Question Pool
+
+☑ Q1
+☐ Q2
+☑ Q3
+☑ Q4
+☐ Q5
+☑ Q6
+```
+
+And:
+
+```text
+Drag & Drop
+```
+
+Example:
+
+```text
+QUESTION BANK
+─────────────────
+Q1 Python
+Q2 SQL
+Q3 DSA
+Q4 ML
+Q5 OOP
+
+            ↓ drag
+
+FINAL PAPER
+─────────────────
+1. Q4
+2. Q1
+3. Q7
+4. Q10
+5. Q13
+```
+
+This gives recruiters control.
+
+---
+
+# 18. Multiple Question Paper Versions
+
+Very important.
+
+Autergo should support:
+
+```text
+Paper A
+Paper B
+Paper C
+Paper D
+```
+
+But not just randomization.
+
+You need **difficulty-equivalent generation**.
+
+```text
+Skill distribution
++
+Difficulty distribution
++
+Question type distribution
+```
+
+Example:
+
+```text
+Paper A
+
+Python    30%
+SQL       20%
+DSA       20%
+ML        15%
+OOP       15%
+
+Difficulty
+
+Easy       20%
+Medium     60%
+Hard       20%
+```
+
+Paper B should maintain approximately the same structure.
+
+---
+
+# 19. Question Analytics
+
+Your idea of frequency distribution is correct.
+
+After enough attempts:
+
+```text
+Question
+   ↓
+Responses
+   ↓
+Statistics
+```
+
+HR sees:
+
+```text
+Question Difficulty
+
+0%      20%      40%      60%      80%     100%
+│────────│────────│────────│────────│────────│
+
+Answered Correctly
+██████████████████████████████      72%
+```
+
+And:
+
+```text
+Score Distribution
+
+0-10     ██
+10-20    ████
+20-30    ███████
+30-40    ███████████
+40-50    █████████████
+50-60    █████████
+60-70    ██████
+70-80    ████
+80-90    ██
+90-100   █
+```
+
+Later you can calculate:
+
+* difficulty index
+* discrimination
+* average response time
+* skip rate
+* distractor effectiveness
+
+That becomes a powerful **question intelligence system**.
+
+---
+
+# 20. Scoring Engine
+
+Keep scoring deterministic.
+
+```text
+Candidate Answer
+        ↓
+Scoring Engine
+        ↓
+Raw Score
+        ↓
+Weighted Score
+        ↓
+Section Score
+        ↓
+Final Score
+```
+
+Example:
+
+```text
+Python          87%
+SQL             65%
+DSA             81%
+Communication   79%
+```
+
+LLM should not decide basic numeric scoring.
+
+---
+
+# 21. Proctoring Architecture
+
+This is one of Autergo's major systems.
+
+```text
+                    CANDIDATE
+                        │
+        ┌───────────────┼────────────────┐
+        │               │                │
+      Camera          Browser          Microphone
+        │               │                │
+        ▼               ▼                ▼
+   Vision Engine   Browser Signals   Audio Engine
+        │               │                │
+        └───────────────┼────────────────┘
+                        ▼
+                  Event Collector
+                        │
+                        ▼
+                  Risk Engine
+                        │
+                        ▼
+               Suspicion Timeline
+                        │
+                        ▼
+                Recruiter Dashboard
+```
+
+---
+
+# 22. Proctoring Signals
+
+### Vision
+
+```text
+Face present
+Face absent
+Multiple faces
+Phone detected
+Head pose
+Body position
+Gaze direction
+Suspicious object
+```
+
+### Browser
+
+```text
+Tab switch
+Window blur
+Fullscreen exit
+Copy
+Paste
+Right click
+Keyboard shortcuts
+DevTools indicators where technically detectable
+```
+
+### Audio
+
+```text
+Speech detected
+Multiple voices
+Unusual background speech
+Noise anomalies
+```
+
+### Screen Share
+
+When explicitly enabled:
+
+```text
+Screen content
+Application changes
+Browser changes
+Suspicious windows
+```
+
+---
+
+# 23. Risk Engine
+
+Do not call everything cheating.
+
+Use:
+
+```text
+Signal
+   ↓
+Confidence
+   ↓
+Severity
+   ↓
+Risk contribution
+```
+
+Example:
+
+```text
+Multiple Face          +35
+Phone Detection        +30
+Tab Switching          +10
+Second Voice           +20
+Fullscreen Exit        +5
+Gaze Deviation         +2
+```
+
+Then:
+
+```text
+Risk Score
+```
+
+Example:
+
+```text
+0–30     NORMAL
+30–60    WATCH
+60–80    SUSPICIOUS
+80–100   CRITICAL
+```
+
+These thresholds should be configurable by HR/organization.
+
+---
+
+# 24. Important: Don't Auto-Reject
+
+You already corrected your original thought here.
+
+The platform should say:
+
+```text
+Candidate Risk: 87
+```
+
+Not:
+
+```text
+Candidate Cheated
+```
+
+Then:
+
+```text
+Evidence
+
+21:31:22
+Multiple face detected
+Confidence: 94%
+
+21:33:19
+Phone-like object detected
+Confidence: 81%
+
+21:35:04
+Tab switched
+```
+
+HR chooses:
+
+```text
+[Confirm Violation]
+[Ignore]
+[Mark for Review]
+```
+
+---
+
+# 25. Proctoring Event Model
+
+Each event should look conceptually like:
+
+```text
+Event
+│
+├── event_id
+├── candidate_id
+├── session_id
+├── drive_id
+├── event_type
+├── timestamp
+├── confidence
+├── severity
+├── evidence_reference
+├── model_version
+└── reviewed_by
+```
+
+This is important because AI models evolve.
+
+You want to know:
+
+> Which model generated this flag?
+
+---
+
+# 26. Live Drive Dashboard
+
+This should be one of your flagship screens.
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ AI ENGINEER DRIVE — LIVE                                   │
+├─────────────────────────────────────────────────────────────┤
+│ Invited     Started     Active     Completed     Flagged    │
+│ 2,000       1,842       1,341        501           32       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Assessment Progress                                        │
+│ ███████████████████████████████░░░ 84%                    │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│ ALERTS                                                     │
+│                                                             │
+│ 🔴 11 Critical                                            │
+│ 🟠 21 Suspicious                                          │
+│ 🟡 17 Technical Issues                                    │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│ Candidate Monitor                                         │
+│                                                             │
+│ Rahul     72%   🟢 11   Active                            │
+│ Amit      63%   🟡 44   Active                            │
+│ Priya     89%   🟢 14   Active                            │
+│ Rohan     47%   🔴 88   Review                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 27. Candidate 360
+
+This is another major product feature.
+
+```text
+                     CANDIDATE 360
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+       Resume          Assessment        Interview
+          │                │                │
+          └────────────────┼────────────────┘
+                           │
+                           ▼
+                    Candidate Profile
+                           │
+             ┌─────────────┼──────────────┐
+             │             │              │
+         Technical     Behavioral    Communication
+             │             │              │
+             └─────────────┼──────────────┘
+                           ▼
+                      Scorecard
+                           │
+                           ▼
+                    Hiring Decision
+```
+
+Example:
+
+```text
+Candidate: Rahul Sharma
+
+Assessment       87
+Technical        91
+Problem Solving  94
+Communication    76
+Interview        84
+Proctoring Risk  LOW
+
+Overall Score    87
+
+Recruiter Decision:
+[ Strong Hire ]
+[ Hire ]
+[ Hold ]
+[ Reject ]
+```
+
+---
+
+# 28. Interview Engine
+
+Support multiple interview modes.
+
+```text
+Human Interview
+AI Interview
+Panel Interview
+Technical Interview
+Coding Interview
+HR Interview
+Video Interview
+```
+
+Recruiter can define:
+
+```text
+Round 1 → Assessment
+Round 2 → Technical
+Round 3 → Manager
+Round 4 → HR
+```
+
+---
+
+# 29. AI Interviewer
+
+Candidate's previous data becomes input.
+
+```text
+Resume
++
+Job Description
++
+Assessment Results
++
+Previous Interview
+        ↓
+Interview Context Engine
+        ↓
+AI Question Generator
+```
+
+Example:
+
+```text
+Assessment:
+
+Python     92
+SQL        57
+ML         88
+```
+
+AI asks more SQL-oriented questions.
+
+That's far better than asking random questions.
+
+---
+
+# 30. Interview Evaluation
+
+Interviewers get:
+
+```text
+Candidate
+───────────────
+
+Technical Knowledge
+[ 1 2 3 4 5 ]
+
+Problem Solving
+[ 1 2 3 4 5 ]
+
+Communication
+[ 1 2 3 4 5 ]
+
+Leadership
+[ 1 2 3 4 5 ]
+
+Culture / Role Fit
+[ 1 2 3 4 5 ]
+
+Comments
+[__________________]
+
+Recommendation
+
+[Strong Hire]
+[Hire]
+[Hold]
+[Reject]
+```
+
+AI can generate a summary.
+
+But:
+
+```text
+AI recommendation ≠ final decision
+```
+
+---
+
+# 31. Communication Engine
+
+Don't build plain email.
+
+Build:
+
+# Recruitment Automation
+
+```text
+Candidate Registered
+       ↓
+Registration Email
+
+Assessment Scheduled
+       ↓
+Assessment Link
+
+24 Hours Before
+       ↓
+Reminder
+
+Assessment Completed
+       ↓
+Confirmation
+
+Shortlisted
+       ↓
+Interview Invitation
+
+Rejected
+       ↓
+Rejection Email
+
+Selected
+       ↓
+Offer Communication
+```
+
+---
+
+# 32. Template System
+
+HR can create:
+
+```text
+Subject:
+
+Congratulations {{candidate.name}}
+```
+
+Body:
+
+```text
+Hello {{candidate.name}},
+
+You have been shortlisted for
+{{job.title}}.
+
+Interview Date:
+{{interview.date}}
+
+Time:
+{{interview.time}}
+
+Link:
+{{interview.link}}
+
+Regards,
+{{company.name}}
+```
+
+Variables should be validated before sending.
+
+---
+
+# 33. Email + Notification Architecture
+
+```text
+Autergo Event
+      ↓
+Communication Service
+      ↓
+Template Engine
+      ↓
+Provider
+      │
+      ├── Email
+      ├── SMS
+      └── WhatsApp
+```
+
+Initially:
+
+```text
+Email only
+```
+
+Then expand.
+
+---
+
+# 34. Technology Decision — Database
+
+You said MongoDB.
+
+My recommendation:
+
+# PostgreSQL as the primary database.
+
+Why?
+
+Autergo has strong relationships:
+
+```text
+Organization
+   ↓
+Users
+   ↓
+Drive
+   ↓
+Candidates
+   ↓
+Applications
+   ↓
+Assessment
+   ↓
+Attempt
+   ↓
+Response
+   ↓
+Interview
+   ↓
+Evaluation
+```
+
+This is naturally relational.
+
+### Recommended architecture
+
+```text
+PostgreSQL
+    +
+Redis
+    +
+Object Storage
+    +
+pgvector
+```
+
+MongoDB can still be introduced later for specific high-volume/event-oriented workloads, but I wouldn't make it your default merely because custom fields exist.
+
+---
+
+# 35. What Redis Actually Does
+
+You said:
+
+> handle server load and database penetration
+
+The more precise explanation is:
+
+Redis helps with **caching, sessions, distributed locks, queues, rate limiting, and high-speed ephemeral state**.
+
+Example:
+
+```text
+Candidate Session
+      ↓
+Redis
+
+Rate Limit
+      ↓
+Redis
+
+Temporary Assessment State
+      ↓
+Redis
+
+Job Queue
+      ↓
+Redis / Queue Broker
+```
+
+Don't use Redis as the main permanent database for recruitment records.
+
+---
+
+# 36. Large-Scale Request Architecture
+
+Your answer to 5,000 simultaneous submissions needs one more level of detail.
+
+```text
+5,000 Candidates
+       │
+       ▼
+Load Balancer
+       │
+       ▼
+Multiple FastAPI Instances
+       │
+       ├──────────┐
+       │          │
+       ▼          ▼
+    Redis      PostgreSQL
+       │
+       ▼
+Message Queue
+       │
+       ▼
+Workers
+       │
+       ├── Scoring
+       ├── Proctor Events
+       ├── Analytics
+       └── Notifications
+```
+
+The API should not do expensive work synchronously.
+
+Bad:
+
+```text
+Submit
+ ↓
+Calculate everything
+ ↓
+Generate AI analysis
+ ↓
+Write every metric
+ ↓
+Return
+```
+
+Better:
+
+```text
+Submit
+ ↓
+Validate
+ ↓
+Persist essential data
+ ↓
+Return success
+ ↓
+Queue background jobs
+```
+
+---
+
+# 37. Scaling Strategy
+
+For 10,000 candidates:
+
+```text
+                    Load Balancer
+                          │
+           ┌──────────────┼──────────────┐
+           ▼              ▼              ▼
+       API Server      API Server     API Server
+           │              │              │
+           └──────────────┼──────────────┘
+                          │
+                        Redis
+                          │
+                    Message Queue
+                          │
+              ┌───────────┼───────────┐
+              ▼           ▼           ▼
+           Worker 1    Worker 2    Worker 3
+              │           │           │
+              └───────────┼───────────┘
+                          ▼
+                     PostgreSQL
+```
+
+For the live dashboard:
+
+```text
+Candidate Browser
+       ↓
+WebSocket
+       ↓
+Realtime Gateway
+       ↓
+Event Stream
+       ↓
+Recruiter Dashboard
+```
+
+---
+
+# 38. Multi-Tenant Architecture
+
+Autergo should be SaaS.
+
+```text
+AUTERGO
+   │
+   ├── Company A
+   │    ├── Users
+   │    ├── Drives
+   │    └── Candidates
+   │
+   ├── Company B
+   │    ├── Users
+   │    ├── Drives
+   │    └── Candidates
+   │
+   └── Company C
+        ├── Users
+        ├── Drives
+        └── Candidates
+```
+
+Every major entity should have:
+
+```text
+tenant_id
+```
+
+Authorization must enforce tenant isolation.
+
+---
+
+# 39. RBAC
+
+Roles:
+
+```text
+Super Admin
+     │
+Organization Admin
+     │
+Recruitment Manager
+     │
+Recruiter
+     │
+Hiring Manager
+     │
+Interviewer
+     │
+Reviewer
+```
+
+Example:
+
+```text
+Recruiter
+    ↓
+Create Drive
+View Candidates
+Schedule Interview
+
+Interviewer
+    ↓
+View Assigned Candidates
+Submit Evaluation
+
+Reviewer
+    ↓
+Review Proctor Events
+Review Interview
+```
+
+---
+
+# 40. Audit System
+
+Enterprise customers will ask:
+
+> Who changed this assessment?
+
+Every important action goes to an audit log.
+
+```text
+USER
+ACTION
+RESOURCE
+OLD VALUE
+NEW VALUE
+TIMESTAMP
+IP
+DEVICE
+```
+
+Example:
+
+```text
+Admin
+
+Changed:
+Assessment Duration
+
+From: 60 min
+To: 90 min
+
+14 Aug 2026
+21:45
+```
+
+This is mandatory for an enterprise-grade system.
+
+---
+
+# 41. AI Layer
+
+You do **not** need AI everywhere.
+
+Use AI where it adds measurable value.
+
+```text
+                     AUTERGO AI
+                          │
+        ┌─────────────────┼──────────────────┐
+        │                 │                  │
+    Question AI       Interview AI      Candidate AI
+        │                 │                  │
+        │                 │                  │
+   Generation        Questioning       Summarization
+   Validation        Adaptation        Skill Analysis
+   Similarity        Evaluation        Recommendation Aid
+```
+
+---
+
+# 42. Computer Vision AI
+
+Use separate models/services.
+
+```text
+Camera
+  ↓
+Frame Sampling
+  ↓
+Computer Vision
+  ↓
+Signals
+```
+
+Potential components:
+
+```text
+Face Detection
+Person Detection
+Phone Detection
+Head Pose
+Gaze
+Object Detection
+```
+
+Important:
+
+Do **not** run heavy inference on every frame through your backend.
+
+Instead:
+
+```text
+Candidate Device
+      ↓
+Lightweight CV inference
+      ↓
+Only events sent to server
+```
+
+This dramatically reduces bandwidth and server costs.
+
+---
+
+# 43. Client-Side vs Server-Side AI
+
+This is a key architectural optimization.
+
+### Browser/device:
+
+```text
+Face detection
+Basic gaze
+Pose
+Phone detection
+```
+
+### Server:
+
+```text
+Aggregation
+Risk scoring
+Advanced analysis
+Audit
+Analytics
+```
+
+Architecture:
+
+```text
+Camera
+ ↓
+Browser AI
+ ↓
+"PHONE_DETECTED"
+ ↓
+Backend
+ ↓
+Risk Engine
+```
+
+This is much more scalable.
+
+---
+
+# 44. Device Strategy
+
+You mentioned:
+
+> phone and desktop app, not only web
+
+This can become a major differentiator, but **do not build three separate full applications first**.
+
+Recommended:
+
+```text
+Desktop / Laptop
+     │
+     └── Primary Candidate Assessment
+
+Mobile
+     │
+     ├── Candidate Notifications
+     ├── Registration
+     └── Possibly specific assessment formats
+
+Recruiter
+     │
+     └── Web + Mobile companion app
+```
+
+For high-security coding assessments, desktop/laptop should remain primary.
+
+---
+
+# 45. Candidate App Later
+
+Mobile can eventually provide:
+
+```text
+Candidate Login Link
+      ↓
+Drive Notifications
+      ↓
+Interview Reminder
+      ↓
+Assessment Reminder
+      ↓
+Interview Join
+      ↓
+Status Tracking
+```
+
+Do not force every candidate to install an app just to take one assessment.
+
+That would hurt adoption.
+
+---
+
+# 46. Security Architecture
+
+```text
+HTTPS
+  ↓
+WAF
+  ↓
+API Gateway
+  ↓
+Authentication
+  ↓
+RBAC
+  ↓
+Tenant Validation
+  ↓
+Service
+  ↓
+Database
+```
+
+Use:
+
+```text
+JWT / session tokens
+Short-lived tokens
+Refresh mechanism
+Rate limiting
+Encryption
+Signed URLs
+Secrets management
+Audit logs
+Input validation
+CSRF protection where applicable
+CORS policy
+```
+
+---
+
+# 47. Assessment Security
+
+For assessment sessions:
+
+```text
+Candidate
+     ↓
+Invitation Token
+     ↓
+Verification
+     ↓
+Session Creation
+     ↓
+Device Binding
+     ↓
+Assessment
+```
+
+Add:
+
+```text
+Session ID
+Device fingerprint / binding strategy
+IP metadata
+Timestamp
+Browser metadata
+```
+
+Don't rely on IP alone because:
+
+```text
+College lab
+Corporate NAT
+Shared Wi-Fi
+VPN
+```
+
+can produce shared IPs.
+
+---
+
+# 48. Prevent Link Sharing
+
+Better model:
+
+```text
+Invitation Link
+       ↓
+Candidate Verification
+       +
+OTP / Email Verification
+       +
+Session Binding
+       ↓
+Assessment Session
+```
+
+If another person opens the same link:
+
+```text
+Active session already exists
+```
+
+They cannot simply enter.
+
+For higher-security drives:
+
+```text
+Face verification
++
+OTP
++
+Device session
+```
+
+---
+
+# 49. Don't Refresh the Link Every 5 Seconds
+
+Your proposed:
+
+> link refresh every 5 seconds
+
+I would reject this architecture.
+
+It creates unnecessary complexity.
+
+Instead:
+
+```text
+Public Invitation URL
+        ↓
+One-time bootstrap
+        ↓
+Authenticated temporary session
+        ↓
+Short-lived access token
+```
+
+The access token can expire frequently, while the session remains valid using secure renewal mechanisms.
+
+---
+
+# 50. AI Candidate Intelligence
+
+This can become Autergo's long-term moat.
+
+```text
+Resume
+   +
+Assessment
+   +
+Coding
+   +
+Interviews
+   +
+Communication
+   +
+Experience
+        ↓
+Candidate Intelligence Layer
+        ↓
+Skill Matrix
+```
+
+Example:
+
+```text
+Python             91
+SQL                72
+Machine Learning   87
+System Design      63
+Communication      78
+Problem Solving    93
+```
+
+Then:
+
+```text
+Job Requirements
+        +
+Candidate Skill Matrix
+        ↓
+Role Match
+```
+
+Example:
+
+```text
+Role Match: 88%
+```
+
+But this should be **decision support**, not an opaque autonomous hiring decision.
+
+---
+
+# 51. Recruiter Analytics
+
+Every drive should have:
+
+### Funnel
+
+```text
+Invited
+  ↓
+Registered
+  ↓
+Started
+  ↓
+Completed
+  ↓
+Qualified
+  ↓
+Interviewed
+  ↓
+Shortlisted
+  ↓
+Selected
+```
+
+### Performance
+
+```text
+Average score
+Median score
+Score distribution
+Skill distribution
+Question performance
+Completion time
+Dropout rate
+```
+
+### Candidate sources
+
+```text
+College
+Location
+Experience
+Referral
+Source
+```
+
+### Proctoring
+
+```text
+Normal
+Watch
+Suspicious
+Critical
+```
+
+---
+
+# 52. Live Technical Monitoring
+
+Do not only monitor cheating.
+
+Recruiters should see:
+
+```text
+LIVE OPERATIONS
+```
+
+Example:
+
+```text
+Network failures
+Browser crashes
+Camera permission failures
+Microphone permission failures
+Candidate disconnects
+Assessment submission failures
+```
+
+Because in a real enterprise drive:
+
+> a technical failure can be just as important as a cheating event.
+
+---
+
+# 53. Drive Control Center
+
+HR gets controls:
+
+```text
+Pause Drive
+Resume Drive
+Extend Time
+Terminate Candidate
+Reopen Candidate
+Replace Question
+Disable Stage
+Move Candidate
+Send Reminder
+Broadcast Message
+```
+
+This is excellent for your enterprise positioning.
+
+---
+
+# 54. Candidate State Machine
+
+A candidate should never just be "active/inactive."
+
+Use:
+
+```text
+INVITED
+   ↓
+REGISTERED
+   ↓
+VERIFIED
+   ↓
+READY
+   ↓
+IN_PROGRESS
+   ↓
+PAUSED
+   ↓
+SUBMITTED
+   ↓
+UNDER_REVIEW
+   ↓
+SHORTLISTED
+   ↓
+INTERVIEW_SCHEDULED
+   ↓
+INTERVIEW_COMPLETED
+   ↓
+FINAL_REVIEW
+   ↓
+SELECTED / REJECTED / HOLD
+```
+
+This state machine will make your architecture much cleaner.
+
+---
+
+# 55. Core Database Entities
+
+Your main schema should contain approximately:
+
+```text
+Organization
+User
+Role
+Permission
+
+Job
+RecruitmentDrive
+DriveStage
+
+Candidate
+CandidateCustomField
+Application
+
+Assessment
+AssessmentSection
+Question
+QuestionVersion
+QuestionOption
+
+AssessmentAttempt
+Answer
+Submission
+
+ProctorSession
+ProctorEvent
+RiskScore
+
+Interview
+InterviewRound
+Interviewer
+InterviewEvaluation
+
+CommunicationTemplate
+CommunicationEvent
+EmailLog
+
+CandidateScorecard
+CandidateDecision
+
+AuditLog
+
+Notification
+File
+```
+
+---
+
+# 56. High-Level Relationship
+
+```text
+Organization
+    │
+    ├── Users
+    │
+    └── RecruitmentDrive
+           │
+           ├── Job
+           │
+           ├── Candidates
+           │      │
+           │      └── Applications
+           │
+           ├── Assessment
+           │      ├── Sections
+           │      └── Questions
+           │
+           ├── Proctoring
+           │
+           ├── Interviews
+           │
+           ├── Communications
+           │
+           └── Analytics
+```
+
+---
+
+# 57. API Design
+
+You should eventually have something like:
+
+```text
+/api/v1/auth
+/api/v1/organizations
+/api/v1/users
+/api/v1/jobs
+/api/v1/drives
+/api/v1/candidates
+/api/v1/applications
+/api/v1/assessments
+/api/v1/questions
+/api/v1/attempts
+/api/v1/submissions
+/api/v1/proctoring
+/api/v1/interviews
+/api/v1/evaluations
+/api/v1/communications
+/api/v1/analytics
+/api/v1/audit
+```
+
+Candidate-specific:
+
+```text
+/api/v1/public/invitations/{token}
+/api/v1/public/verify
+/api/v1/public/session
+/api/v1/public/assessment
+/api/v1/public/submit
+```
+
+---
+
+# 58. Real-Time Architecture
+
+For live dashboard:
+
+```text
+Candidate Browser
+       │
+       │ WebSocket
+       ▼
+Realtime Gateway
+       │
+       ▼
+Event Bus
+       │
+       ├─────────────┐
+       ▼             ▼
+Risk Engine      Live Metrics
+       │             │
+       └──────┬──────┘
+              ▼
+       Recruiter Dashboard
+```
+
+HR should see changes almost immediately.
+
+---
+
+# 59. Event-Driven Autergo
+
+This is a very good architecture for your project.
+
+Events:
+
+```text
+CANDIDATE_REGISTERED
+ASSESSMENT_STARTED
+QUESTION_ANSWERED
+ASSESSMENT_SUBMITTED
+FACE_MISSING
+SECOND_FACE_DETECTED
+PHONE_DETECTED
+TAB_SWITCHED
+CANDIDATE_DISCONNECTED
+INTERVIEW_SCHEDULED
+INTERVIEW_COMPLETED
+CANDIDATE_SHORTLISTED
+CANDIDATE_SELECTED
+```
+
+Then services subscribe.
+
+Example:
+
+```text
+ASSESSMENT_SUBMITTED
+      │
+      ├── Scoring
+      ├── Analytics
+      ├── Candidate Status
+      └── Communication
+```
+
+---
+
+# 60. Suggested Tech Stack
+
+## Frontend
+
+For serious enterprise scale:
+
+```text
+Next.js
+TypeScript
+Tailwind CSS
+WebSocket
+```
+
+I know you've preferred avoiding React historically, but for **this particular product**, a rich recruiter dashboard, real-time tables, interactive question builders, drag/drop, and live state updates make a modern frontend framework a practical choice.
+
+The backend can remain fully Python-centric.
+
+## Backend
+
+```text
+Python
+FastAPI
+Pydantic
+SQLAlchemy
+Alembic
+WebSockets
+```
+
+## Database
+
+```text
+PostgreSQL
+Redis
+pgvector
+```
+
+## Background Processing
+
+```text
+Celery / Dramatiq
+Redis / RabbitMQ
+```
+
+## AI
+
+```text
+LLM API
+Whisper
+YOLO
+MediaPipe
+OpenCV
+Embedding Model
+```
+
+## Storage
+
+```text
+S3 / Azure Blob
+```
+
+## Infrastructure
+
+```text
+Docker
+Nginx
+Cloud Load Balancer
+Monitoring
+Logging
+OpenTelemetry
+```
+
+---
+
+# 61. Don't Start With Microservices
+
+This is another place where I would contradict the instinct to make it "enterprise" immediately.
+
+Start with:
+
+# Modular Monolith
+
+```text
+FastAPI
+│
+├── auth
+├── organizations
+├── drives
+├── candidates
+├── assessments
+├── interviews
+├── proctoring
+├── communication
+└── analytics
+```
+
+Deploy as one backend initially.
+
+Use clean internal boundaries.
+
+Later:
+
+```text
+Monolith
+   ↓
+Extract high-load services
+```
+
+Potential future services:
+
+```text
+Proctoring Service
+Realtime Service
+AI Service
+Notification Service
+Analytics Service
+```
+
+This is far more realistic.
+
+---
+
+# 62. Recommended Deployment
+
+### Initial
+
+```text
+Cloud Load Balancer
+        │
+        ▼
+FastAPI
+        │
+   ┌────┼────┐
+   ▼    ▼    ▼
+Postgres Redis S3
+```
+
+### Scaling
+
+```text
+Load Balancer
+      │
+ ┌────┼─────┐
+ ▼    ▼     ▼
+API1 API2  API3
+      │
+      ▼
+ Redis / Queue
+      │
+ ┌────┼────┐
+ ▼    ▼    ▼
+W1   W2   W3
+      │
+      ▼
+PostgreSQL
+```
+
+---
+
+# 63. Enterprise Features
+
+These shouldn't all be MVP.
+
+Later:
+
+```text
+SSO
+SAML
+SCIM
+MFA
+Enterprise RBAC
+Audit Logs
+API Keys
+Webhooks
+Data Retention
+Custom Branding
+Custom Domains
+White Label
+ATS Integrations
+HRIS Integrations
+Advanced Analytics
+Compliance Controls
+```
+
+---
+
+# 64. Autergo's Differentiation
+
+Don't say:
+
+> "Autergo has AI."
+
+Everyone can say that.
+
+Your positioning should be closer to:
+
+```text
+Traditional Recruitment
+
+ATS
+ +
+Assessment Tool
+ +
+Proctoring Tool
+ +
+Video Tool
+ +
+Email
+ +
+Excel
+```
+
+Autergo:
+
+```text
+                 AUTERGO
+                    │
+       ┌────────────┼────────────┐
+       │            │            │
+ Recruitment    Assessment   Interview
+       │            │            │
+       └────────────┼────────────┘
+                    │
+                Proctoring
+                    │
+                Evaluation
+                    │
+                Analytics
+                    │
+              Communication
+```
+
+### Core positioning:
+
+> **One operating system for the complete recruitment drive.**
+
+---
+
+# 65. The Actual Moat
+
+Your statement:
+
+> "complete Autergo is unique"
+
+is too broad.
+
+A product is not defensible simply because it has many features.
+
+Your actual moat should become:
+
+### 1. Recruitment workflow engine
+
+Highly configurable drive/stage architecture.
+
+### 2. Candidate intelligence graph
+
+```text
+Resume
++
+Assessment
++
+Interview
++
+Skills
++
+Behavior
++
+Performance
+```
+
+### 3. Proctoring evidence engine
+
+Not merely "AI detects cheating."
+
+Instead:
+
+```text
+Event
++
+Confidence
++
+Context
++
+Evidence
++
+Review
+```
+
+### 4. Enterprise drive command center
+
+This becomes hard to replicate well because it requires:
+
+```text
+Realtime systems
++
+Assessment engine
++
+Proctoring
++
+Workflow
++
+Analytics
+```
+
+---
+
+# 66. What Autergo Should NOT Promise
+
+Avoid marketing statements like:
+
+```text
+100% cheat-proof
+100% accurate AI hiring
+AI guarantees the best candidate
+AI knows whether candidate is lying
+AI cannot make mistakes
+```
+
+Instead:
+
+```text
+AI-assisted
+Evidence-based
+Human-reviewed
+Configurable
+Auditable
+Risk-aware
+```
+
+This makes the enterprise product much more credible.
+
+---
+
+# 67. MVP — What You Should Actually Build
+
+Do **not** build all of this first.
+
+### Autergo V1
+
+```text
+Organization
+       ↓
+Recruiter Login
+       ↓
+Create Drive
+       ↓
+Create Job
+       ↓
+Upload Candidates
+       ↓
+Candidate Invite
+       ↓
+No-account Candidate Entry
+       ↓
+Assessment Builder
+       ↓
+MCQ + Coding
+       ↓
+Timer
+       ↓
+Submission
+       ↓
+Auto Scoring
+       ↓
+Basic Proctoring
+       ↓
+Live Dashboard
+       ↓
+Shortlisting
+       ↓
+Interview Scheduling
+       ↓
+Evaluation
+       ↓
+Final Selection
+```
+
+---
+
+# 68. V1 Proctoring
+
+Do only:
+
+```text
+Face detection
+Multiple face detection
+Phone detection
+Tab switching
+Fullscreen exit
+Camera disconnected
+Microphone disconnected
+Candidate disconnect
+```
+
+Then risk score.
+
+Don't immediately attempt:
+
+```text
+advanced gaze analysis
+voice stress analysis
+emotion detection
+deep behavioral analysis
+```
+
+Those can come later.
+
+---
+
+# 69. V1 Question Engine
+
+Support:
+
+```text
+MCQ
+Multiple Correct
+True/False
+Coding
+SQL
+Short Answer
+```
+
+Then expand.
+
+---
+
+# 70. V1 AI
+
+Use AI for:
+
+```text
+Question generation
+Question variation
+Question explanation
+Duplicate detection
+Resume parsing
+Interview question suggestions
+Candidate summary
+```
+
+Not:
+
+```text
+Final hiring decision
+```
+
+---
+
+# 71. Product Evolution
+
+```text
+               AUTERGO
+                  │
+       ┌──────────┴───────────┐
+       │                      │
+      V1                     V2
+       │                      │
+ Core Recruitment       AI Intelligence
+       │                      │
+       ├── Drives             ├── AI Interview
+       ├── Assessment         ├── Adaptive Test
+       ├── Interview          ├── Skill Graph
+       ├── Proctoring         └── Candidate Ranking
+       └── Analytics
+                              │
+                              ▼
+                              V3
+                              │
+                    Enterprise Recruitment OS
+                              │
+           ┌──────────────────┼──────────────────┐
+           │                  │                  │
+          ATS               HRIS             SSO/SCIM
+           │                  │                  │
+           └──────────────────┼──────────────────┘
+                              │
+                              ▼
+                           API Platform
+```
+
+---
+
+# 72. Your First Customer
+
+You answered:
+
+> IT companies.
+
+Correct, but I would narrow it further.
+
+### Best initial ICP
+
+**Mid-sized IT/software companies running recurring technical recruitment drives.**
+
+Example:
+
+```text
+100–5,000 employees
++
+regular hiring
++
+technical assessments
++
+campus/lateral drives
+```
+
+Why?
+
+They actually feel the pain of:
+
+```text
+100+ candidates
++
+multiple recruiters
++
+multiple rounds
++
+assessment tools
++
+manual Excel
++
+email chaos
+```
+
+---
+
+# 73. Example Real Drive
+
+Suppose:
+
+```text
+Company: XYZ Technologies
+
+Role:
+AI Engineer
+
+Candidates:
+1,500
+```
+
+Autergo does:
+
+```text
+Recruiter creates drive
+        ↓
+Imports 1,500 candidates
+        ↓
+Autergo sends personalized invitations
+        ↓
+Candidates enter without account
+        ↓
+Assessment begins
+        ↓
+AI proctoring runs
+        ↓
+Live dashboard displays status
+        ↓
+Candidates submit
+        ↓
+Automatic scoring
+        ↓
+HR reviews suspicious events
+        ↓
+Top 200 shortlisted
+        ↓
+Technical interview
+        ↓
+AI assists questioning
+        ↓
+Interview evaluation
+        ↓
+Top 50
+        ↓
+HR round
+        ↓
+Final 20 selected
+        ↓
+Automated communication
+```
+
+That is the complete product story.
+
+---
+
+# 74. One Final Architecture Diagram
+
+This is the architecture I'd currently recommend for Autergo:
+
+```text
+                              AUTERGO
+                                 │
+                    ┌────────────┴────────────┐
+                    │                         │
+               RECRUITER UI              CANDIDATE UI
+                    │                         │
+                    └────────────┬────────────┘
+                                 │
+                            API GATEWAY
+                                 │
+                           AUTH / RBAC
+                                 │
+                         AUTERGO CORE API
+                                 │
+        ┌───────────┬───────────┼───────────┬───────────┐
+        │           │           │           │           │
+        ▼           ▼           ▼           ▼           ▼
+     DRIVE       ASSESSMENT  INTERVIEW   COMMUNICATION ANALYTICS
+     ENGINE       ENGINE      ENGINE        ENGINE      ENGINE
+        │           │           │             │           │
+        │           │           │             │           │
+        └───────────┴──────┬────┴─────────────┘           │
+                           │                              │
+                           ▼                              │
+                     EVENT SYSTEM                         │
+                           │                              │
+               ┌───────────┼────────────┐                 │
+               │           │            │                 │
+               ▼           ▼            ▼                 │
+            PROCTORING    SCORING       AI                │
+               │           │            │                 │
+       ┌───────┼───────┐   │       ┌────┼────┐            │
+       │       │       │   │       │    │    │            │
+     Vision Browser  Audio │    LLM Vision NLP           │
+       │       │       │   │       │    │    │            │
+       └───────┼───────┘   │       └────┼────┘            │
+               │           │            │                 │
+               └───────────┴────────────┘                 │
+                           │                              │
+                           ▼                              ▼
+                     RISK ENGINE                    DATA ANALYTICS
+                           │                              │
+                           └──────────────┬───────────────┘
+                                          │
+                ┌─────────────────────────┼──────────────────────┐
+                │                         │                      │
+                ▼                         ▼                      ▼
+           POSTGRESQL                   REDIS              OBJECT STORAGE
+                │                         │                      │
+                │                         │                      │
+                ▼                         ▼                      ▼
+           Core Business             Sessions/Queue        Resume/Video
+           Data/Relations            Cache/Realtime         Evidence
+```
+
+---
+
+# 75. Final Autergo Product Structure
+
+The cleanest mental model is:
+
+```text
+AUTERGO
+│
+├── 01. Organization
+│
+├── 02. Recruitment Drives
+│
+├── 03. Jobs & Eligibility
+│
+├── 04. Candidate Management
+│
+├── 05. Assessment Builder
+│
+├── 06. Question Bank
+│
+├── 07. AI Question Engine
+│
+├── 08. Candidate Test Engine
+│
+├── 09. AI Proctoring
+│
+├── 10. Live Drive Command Center
+│
+├── 11. Interview Management
+│
+├── 12. AI Interviewer
+│
+├── 13. Candidate 360
+│
+├── 14. Evaluation Engine
+│
+├── 15. Communication Automation
+│
+├── 16. Analytics
+│
+├── 17. Audit & Security
+│
+└── 18. Enterprise Integrations
+```
+
+## The one-line product definition
+
+> **Autergo is an AI-powered enterprise recruitment-drive platform that lets organizations create, run, monitor, evaluate, and complete an entire recruitment process from candidate invitation to final hiring decision in one system.**
+
+And the strongest architectural decision I'd make now is:
+
+**PostgreSQL + Redis + Object Storage + FastAPI + real-time event architecture + modular monolith first, with AI/proctoring services separated logically and extracted physically only when scale requires it.**
+
