@@ -167,7 +167,7 @@ description: "Dependency-ordered implementation tasks for Autergo Enterprise Rec
 - [x] T071 [US6] Implement AI Question Suggester and Candidate Summarizer in `backend/app/services/ai_service.py`
 - [x] T072 [US6] Implement Structured Rubric Evaluation submission and scorecard aggregation in `backend/app/api/v1/evaluations.py`
 - [x] T073 [US6] Implement Final hiring decision endpoints (Strong Hire / Hire / Hold / Reject) in `backend/app/api/v1/scorecards.py`
-- [ ] T074 [P] [US6] Build Interview Management and Rubric Evaluation Form in `frontend/src/app/(recruiter)/interviews/page.tsx`
+- [x] T074 [P] [US6] Build Interview Management and Rubric Evaluation Form in `frontend/src/app/(recruiter)/interviews/page.tsx`
 - [x] T075 [US6] Build Unified Candidate 360 Profile with competency radar charts in `frontend/src/app/(recruiter)/drives/[id]/candidate360/page.tsx`
 - [x] T076 [US6] Write integration tests for Interview evaluation and Candidate 360 aggregation in `backend/tests/integration/test_interviews.py`
 
@@ -185,8 +185,8 @@ description: "Dependency-ordered implementation tasks for Autergo Enterprise Rec
 - [x] T079 [US7] Implement Communication Template CRUD and variable validation service in `backend/app/services/communication_service.py`
 - [x] T080 [US7] Implement Event-driven Celery background email worker in `backend/app/workers/communication_tasks.py`
 - [x] T081 [US7] Implement Drive Funnel and Question Analytics aggregation endpoints in `backend/app/api/v1/analytics.py`
-- [ ] T082 [P] [US7] Build Email Template Manager in `frontend/src/app/(recruiter)/drives/[id]/communications/page.tsx`
-- [ ] T083 [US7] Build Analytics Dashboard (Funnel drop-off, score histograms, question difficulty indices) in `frontend/src/app/(recruiter)/drives/[id]/analytics/page.tsx`
+- [x] T082 [P] [US7] Build Email Template Manager in `frontend/src/app/(recruiter)/drives/[id]/communications/page.tsx`
+- [x] T083 [US7] Build Analytics Dashboard (Funnel drop-off, score histograms, question difficulty indices) in `frontend/src/app/(recruiter)/drives/[id]/analytics/page.tsx`
 - [x] T084 [US7] Write integration tests for Communication variable rendering and Analytics aggregation in `backend/tests/integration/test_analytics.py`
 
 **Checkpoint**: Automated email pipelines and recruitment analytics active.
