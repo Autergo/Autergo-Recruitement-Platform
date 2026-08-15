@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Integer, Numeric
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Float, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -10,13 +10,14 @@ class ProctorSession(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     attempt_id = Column(UUID(as_uuid=True), ForeignKey("assessment_attempts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    risk_score = Column(Numeric(5,2), nullable=False, default=0.0)
-    risk_level = Column(String(20), nullable=False, default="NORMAL") # NORMAL, WATCH, SUSPICIOUS, CRITICAL
-    adjudication_status = Column(String(50), nullable=False, default="pending") # pending, confirmed_violation, ignored, flagged_for_review
-    adjudicated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    adjudication_notes = Column(Text, nullable=True)
+    status = Column(String(50), default="active", nullable=False) # active, paused, completed, terminated
+    suspicion_score = Column(Float, default=0.0, nullable=False)
+    risk_level = Column(String(50), default="normal", nullable=False) # normal, suspicious, critical
+    total_events_count = Column(Float, default=0.0, nullable=False)
+    unresolved_flags_count = Column(Float, default=0.0, nullable=False)
+    reviewer_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
-    attempt = relationship("AssessmentAttempt", back_populates="proctor_session")
     events = relationship("ProctorEvent", back_populates="session", cascade="all, delete-orphan", order_by="ProctorEvent.timestamp")
 
 class ProctorEvent(Base):
@@ -24,12 +25,14 @@ class ProctorEvent(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id = Column(UUID(as_uuid=True), ForeignKey("proctor_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
-    event_type = Column(String(50), nullable=False, index=True) # FACE_ABSENT, MULTIPLE_FACES, PHONE_DETECTED, TAB_SWITCHED, FULLSCREEN_EXIT, AUDIO_VOICE_DETECTED, CAMERA_DISCONNECTED
-    confidence = Column(Numeric(4,2), nullable=False, default=1.0)
-    severity = Column(String(20), nullable=False, default="low") # low, medium, high, critical
-    risk_weight = Column(Numeric(5,2), nullable=False, default=0.0)
-    evidence_media_url = Column(Text, nullable=True)
-    model_version = Column(String(50), nullable=False, default="v1.0")
+    event_type = Column(String(100), nullable=False, index=True) # face_not_detected, multiple_faces, phone_detected, tab_switch
+    severity = Column(String(50), nullable=False, default="medium") # low, medium, high, critical
+    confidence = Column(Float, nullable=False, default=1.0)
+    evidence_media_url = Column(String(1000), nullable=True)
+    event_metadata = Column(JSON, nullable=False, default={})
+    adjudication_status = Column(String(50), default="pending", nullable=False) # pending, confirmed_violation, ignored, needs_review
+    adjudicated_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    adjudicated_at = Column(DateTime(timezone=True), nullable=True)
     timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     session = relationship("ProctorSession", back_populates="events")

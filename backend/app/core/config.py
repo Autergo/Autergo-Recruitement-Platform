@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # PostgreSQL Configuration
+    # Database Configuration (PostgreSQL by default with SQLite local fallback)
+    USE_SQLITE: bool = True
+    SQLITE_DB_FILE: str = "autergo_local.db"
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "autergo"
@@ -18,10 +20,14 @@ class Settings(BaseSettings):
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.USE_SQLITE:
+            return f"sqlite+aiosqlite:///{self.SQLITE_DB_FILE}"
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     @property
     def SYNC_DATABASE_URI(self) -> str:
+        if self.USE_SQLITE:
+            return f"sqlite:///{self.SQLITE_DB_FILE}"
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # Redis Configuration

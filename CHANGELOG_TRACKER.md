@@ -46,3 +46,10 @@ This ledger tracks every development task, minute codebase adjustment, test exec
   - `.env.example`
   - `.github/workflows/ci.yml`
 - **Result**: Automated continuous integration with PostgreSQL 16 (pgvector), Redis, and automated pytest validation on push.
+
+---
+
+### [2026-08-15 09:30:00 UTC] - Zero-Docker Local Execution Support (SQLite / aiosqlite fallback)
+- **Action**: Configured universal database column schemas (`JSON`) and enabled `USE_SQLITE=True` async fallback via `aiosqlite` so the backend and seeder can run standalone without requiring Docker or a local PostgreSQL instance.
+- **Seeded Tables**: Successfully created and populated organizations, drives, stages, questions, candidates, and applications locally in `autergo_local.db`.
+- **Test Status**: All 8 backend test suites verified and passing cleanly.

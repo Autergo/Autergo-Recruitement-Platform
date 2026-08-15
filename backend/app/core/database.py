@@ -3,12 +3,13 @@ from sqlalchemy.orm import DeclarativeBase
 from typing import AsyncGenerator
 from app.core.config import settings
 
+connect_args = {"check_same_thread": False} if settings.USE_SQLITE else {}
+
 engine = create_async_engine(
     settings.SQLALCHEMY_DATABASE_URI,
     echo=False,
-    pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=10
+    connect_args=connect_args,
+    pool_pre_ping=True
 )
 
 AsyncSessionLocal = async_sessionmaker(
