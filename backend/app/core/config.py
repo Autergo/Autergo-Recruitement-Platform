@@ -52,9 +52,17 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
-    # LLM / AI Configuration
-    OPENAI_API_KEY: Optional[str] = "sk-placeholder"
-    DEFAULT_LLM_MODEL: str = "gpt-4o-mini"
+    # LLM Multi-Tier API Configurations
+    # 1. NVIDIA API (Primary Provider)
+    NVIDIA_API_KEY: str = "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"
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_PRIMARY_MODEL: str = "nvidia/nemotron-3.5-lightning-30b-a3b"
+    
+    # 2. Groq API (Secondary / Fallback Provider)
+    GROQ_API_KEY: str = "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"
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_PRIMARY_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_FALLBACK_MODEL: str = "gemma2-9b-it"
 
     class Config:
         case_sensitive = True
