@@ -222,7 +222,7 @@ export default function DrivePipelineTrackingPage() {
                   Interviewer: <strong className="text-slate-200">{selectedCandidate.profile_info?.l1_interviewer_name || 'L1 Reviewer'}</strong>
                 </div>
                 <p className="text-xs text-slate-300 italic pt-1">
-                  "{selectedCandidate.profile_info?.l1_feedback}"
+                  &ldquo;{selectedCandidate.profile_info?.l1_feedback}&rdquo;
                 </p>
               </div>
             )}
@@ -240,7 +240,7 @@ export default function DrivePipelineTrackingPage() {
                   Interviewer: <strong className="text-slate-200">{selectedCandidate.profile_info?.l2_interviewer_name || 'L2 Reviewer'}</strong>
                 </div>
                 <p className="text-xs text-slate-300 italic pt-1">
-                  "{selectedCandidate.profile_info?.l2_feedback}"
+                  &ldquo;{selectedCandidate.profile_info?.l2_feedback}&rdquo;
                 </p>
               </div>
             )}

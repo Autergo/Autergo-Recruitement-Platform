@@ -125,7 +125,7 @@ export default function L2CandidateDossierPage() {
             </span>
           </div>
           <p className="text-sm text-slate-200 leading-relaxed font-sans italic">
-            "{dossier.l1_evaluation?.feedback || 'Candidate solved technical algorithmic questions quickly and explained reasoning cleanly.'}"
+            &ldquo;{dossier.l1_evaluation?.feedback || 'Candidate solved technical algorithmic questions quickly and explained reasoning cleanly.'}&rdquo;
           </p>
         </div>
 
