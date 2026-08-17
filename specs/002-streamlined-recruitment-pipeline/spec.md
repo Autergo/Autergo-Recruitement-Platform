@@ -2,38 +2,43 @@
 
 **Feature Directory**: `specs/002-streamlined-recruitment-pipeline/`  
 **Status**: Draft  
-**Version**: 1.0.0  
+**Version**: 1.1.0  
 **Domain**: Enterprise Recruitment & Interview Lifecycle Management  
 
 ---
 
 ## 1. Overview & Problem Statement
 
-The previous recruitment setup was overly complex with too many fragmented abstractions. The platform needs a clear, robust, intuitive, and frictionless recruitment operating flow tailored around **four core actors**:
-1. **Admin**: System-wide authority, tenant governance, user and role management, audit overview.
-2. **Recruiter**: Drives lifecycle owner — creates drives, defines question papers with answers, imports/invites candidates, monitors overall pipelines, tracks candidates end-to-end (stages, scores, rejection reasons), and makes final hiring decisions.
-3. **L1 Technical Interviewer**: Claims candidates who cleared the test cutoff score, reviews candidate onboarding metadata (name, email, referral, experience, custom fields) and their submitted test paper with answer breakdown, conducts technical assessment, and submits pass/fail feedback with notes.
-4. **L2 Advanced/Panel Interviewer**: Views candidates cleared by L1, reviews complete candidate history (onboarding details, test paper, and L1 feedback/ratings), conducts final technical/architecture round, and submits L2 feedback.
-
-## Clarifications
-
-### Session 2026-08-17
-- Q: Can an L1 or L2 Interviewer release/unclaim a candidate back to the pool? → A: Option A (Interviewer can click "Release / Unclaim" to return candidate to pool, and candidates auto-return to pool if untouched after 24 hours).
-- Q: When a candidate is rejected, should rejection emails be sent automatically or manually? → A: Drive-Level Configurable (Recruiter configures in drive settings whether rejection emails are dispatched automatically upon rejection or queued for manual batch dispatch).
-- Q: Can candidates be directly assigned to specific interviewers? → A: Option B (Strict Self-Claim from Pool: Candidates must be claimed directly from the unassigned L1/L2 pool by the interviewer who will conduct the interview).
+The platform is designed around **four primary actors** with a direct, frictionless recruitment operating model:
+1. **Admin**: System-wide tenant, user & role management, platform overview.
+2. **Recruiter**: Creates recruitment drives, sets assessment papers with answer keys and cutoffs, receives a **Drive Magic Link / QR Code** to share with candidates, monitors pipeline stages, and tracks candidate 360 dossiers.
+3. **L1 Technical Interviewer**: Claims candidates who cleared the test cutoff score, reviews candidate onboarding profile (name, email, referral, experience) and their exact submitted test paper with answer grading, conducts technical assessment, and submits pass/fail evaluation.
+4. **L2 Advanced/Panel Interviewer**: Views candidates cleared by L1, reviews full history (onboarding profile, test paper, and **L1 interviewer ratings & feedback comments**), conducts final technical/architecture round, and submits L2 evaluation.
 
 ---
 
-## 2. Actor Roles & Permissions Matrix
+## 2. Clarifications
+
+### Session 2026-08-17
+- **Q1**: Can an L1 or L2 Interviewer release/unclaim a candidate back to the pool? → **A**: Option A (Interviewer can click "Release / Unclaim" to return candidate to pool, and candidates auto-return to pool if untouched after 24 hours).
+- **Q2**: When a candidate is rejected, should rejection emails be sent automatically or manually? → **A**: Drive-Level Configurable (Recruiter toggles in drive settings whether rejection emails are dispatched automatically or queued).
+- **Q3**: Can candidates be directly assigned to specific interviewers? → **A**: Option B (Strict Self-Claim from Pool: Candidates must be claimed directly from the unassigned L1/L2 pool by the interviewer).
+- **Q4**: How does the candidate enter the test and what proctoring applies? → **A**: Recruiter receives a shareable Drive Magic Link & QR Code. Candidate visits link, enters email, fills onboarding info (Name, Email, Experience, Referral), acknowledges a prominent Proctoring Consent Warning (Full-screen enforcement & Tab-switch logging), and takes the test on either Laptop or Mobile Web.
+
+---
+
+## 3. Actor Roles & Permissions Matrix
 
 | Capability | Admin | Recruiter | L1 Interviewer | L2 Interviewer | Candidate |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **User & Tenant Management** | ✅ Full | ❌ | ❌ | ❌ | ❌ |
-| **Create & Publish Drives** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
+| **Create Drive & Generate Magic Link / QR** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
 | **Set Question Paper & Answer Keys** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
 | **Set Stage Cutoff Criteria (e.g. 70%)** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
 | **Import Candidates & Generate Invites** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
-| **Take Timed Assessment (OTP)** | ❌ | ❌ | ❌ | ❌ | ✅ Full |
+| **Access Magic Link / QR Code & Fill Info** | ❌ | ❌ | ❌ | ❌ | ✅ Full |
+| **Proctoring Agreement (Fullscreen / Tab-Switch)** | ❌ | ❌ | ❌ | ❌ | ✅ Full |
+| **Take Timed Assessment (Laptop & Mobile Web)** | ❌ | ❌ | ❌ | ❌ | ✅ Full |
 | **End-to-End Candidate Tracking Dashboard** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
 | **View L1 Eligible Candidates Pool** | ✅ Full | ✅ Full | ✅ Unclaimed / Claimed | ❌ | ❌ |
 | **Claim L1 Candidate & View Test Paper** | ✅ Full | ✅ Full | ✅ Own Claimed | ❌ | ❌ |
@@ -45,117 +50,100 @@ The previous recruitment setup was overly complex with too many fragmented abstr
 
 ---
 
-## 3. User Scenarios & Acceptance Flows
+## 4. User Scenarios & Acceptance Flows
 
-### Scenario 1: Recruiter Creates Drive with Questions, Answers & Cutoff
+### Scenario 1: Recruiter Creates Drive & Gets Magic Link / QR Code
 - **Given** a logged-in Recruiter:
 - **When** the recruiter creates a new drive:
-  - Enters Job Title, Description, and required onboarding fields (e.g., Name, Email, Phone, Experience in Years, Referral).
-  - Sets an Assessment Paper: selects/creates questions with correct answer keys and marks per question.
-  - Sets **L1 Qualifying Cutoff Percentage** (e.g., $\ge 60\%$).
-  - Publishes the drive and uploads candidate emails/CSV.
-- **Then** the drive becomes `Published` and invitation links with OTP are dispatched to candidates.
+  - Enters Job Title, Description, and required onboarding fields (Experience in Years, Referral source, Phone).
+  - Configures Question Paper with questions, options, boilerplate code, marks, and answer keys.
+  - Sets Cutoff Percentage (e.g. 60%) and rejection email toggle.
+  - Clicks **Publish Drive**.
+- **Then** the system creates the drive and displays:
+  - Unique **Drive Public Magic Link** (e.g., `/drive/{drive_slug_or_id}/apply`).
+  - Scannable **QR Code** for instant sharing with mobile/laptop candidates.
 
-### Scenario 2: Candidate Registers & Takes Test
-- **Given** a candidate receiving an invitation token:
-- **When** the candidate enters `/test/{token}/verify`:
-  - Enters email and OTP.
-  - Fills required onboarding details (Name, Email, Experience, Referral source).
-  - Takes the timed assessment answering MCQs and coding questions with auto-save.
-  - Submits the test.
-- **Then** system grades the test automatically:
-  - If $\text{Score} \ge \text{Cutoff}$, candidate status moves to **`L1_ELIGIBLE`**.
-  - If $\text{Score} < \text{Cutoff}$, candidate status moves to **`TEST_REJECTED`** with score and rejection reason recorded.
+### Scenario 2: Candidate Registers, Acknowledges Proctoring & Takes Test
+- **Given** a candidate scanning the QR code or clicking the Drive Magic Link:
+- **When** the candidate opens the link:
+  - **Step 1: Email Entry**: Enters email address.
+  - **Step 2: Candidate Info Page**: Fills Name, Phone, Total Experience (Years), Referral Source, and custom fields.
+  - **Step 3: Proctoring Agreement & Warning**:
+    - System displays full-screen proctoring policy warning.
+    - Warns that leaving full-screen, switching browser tabs, or minimizing window logs violation telemetry.
+    - Device detection recognizes whether candidate is on **Laptop Browser** or **Mobile Web**.
+    - Candidate clicks **"I Agree & Start Assessment"**.
+  - **Step 4: Assessment Runner**:
+    - Full-screen mode is requested/locked.
+    - Candidate solves MCQs and coding challenges with live auto-save.
+    - Responsive layout accommodates both desktop Monaco editor and mobile-friendly touch inputs.
+    - Tab switches and window blurs trigger on-screen warnings and log telemetry flags.
+  - **Step 5: Submission & Auto-Grading**:
+    - Candidate submits or timer expires.
+    - If $\text{Score} \ge \text{Cutoff}$, candidate automatically transitions to **`L1_ELIGIBLE`**.
+    - If $\text{Score} < \text{Cutoff}$, candidate transitions to **`TEST_REJECTED`** with exact score and reason logged.
 
 ### Scenario 3: L1 Interviewer Claims Candidate, Reviews Paper & Submits Evaluation
 - **Given** an L1 Interviewer logged in:
 - **When** navigating to the **L1 Interview Pool**:
-  - Sees all candidates in `L1_ELIGIBLE` status (unclaimed or claimed by self).
-  - Clicks **"Claim Candidate"** to lock the candidate to themselves (status becomes `L1_IN_PROGRESS`).
+  - Views all candidates with status `L1_ELIGIBLE` (unclaimed or claimed by self).
+  - Clicks **"Claim Candidate"** to lock the candidate to themselves (`L1_IN_PROGRESS`). Can also click "Release" to return to pool.
   - Opens the candidate dossier:
-    - Views candidate details: Name, Email, Phone, Experience, Referral.
-    - Views the candidate's submitted test paper: questions, candidate's submitted answers, correct answers, and per-question score.
-  - Conducts the interview and submits evaluation:
-    - Verdict: **PASS** (Moves to `L2_ELIGIBLE`) or **REJECT** (Moves to `L1_REJECTED`).
-    - Rating (1 to 5) and Detailed Feedback Comments.
-- **Then** candidate status and L1 feedback are saved and recorded in audit logs.
+    - Candidate profile details (Name, Email, Experience, Referral, Device type).
+    - Full submitted test paper: questions, candidate's submitted answers, correct answers, test score, and tab-switch proctoring count.
+  - Submits evaluation: Verdict (**PASS** $\rightarrow$ `L2_ELIGIBLE` or **REJECT** $\rightarrow$ `L1_REJECTED`), 1-5 rating, and detailed comments.
 
 ### Scenario 4: L2 Interviewer Evaluates L1-Cleared Candidate
 - **Given** an L2 Interviewer logged in:
 - **When** navigating to the **L2 Interview Pool**:
-  - Sees all candidates in `L2_ELIGIBLE` status.
-  - Clicks **"Claim Candidate"** (status becomes `L2_IN_PROGRESS`).
-  - Opens candidate dossier:
-    - Views all initial onboarding details and test paper.
-    - Views **L1 Interviewer Name, Rating, and L1 Detailed Feedback Notes**.
-  - Conducts L2 interview and submits evaluation:
-    - Verdict: **PASS** (Moves to `L2_CLEARED` / `FINAL_SELECTION`) or **REJECT** (Moves to `L2_REJECTED`).
-    - Rating and L2 Comments.
-- **Then** the candidate advances to Recruiter Final Review.
+  - Views candidates in `L2_ELIGIBLE` pool.
+  - Clicks **"Claim Candidate"** (`L2_IN_PROGRESS`).
+  - Opens dossier:
+    - All initial candidate info & submitted test paper.
+    - **L1 Interviewer Name, Rating (1-5), and L1 Feedback Notes**.
+  - Submits evaluation: Verdict (**PASS** $\rightarrow$ `L2_CLEARED` or **REJECT** $\rightarrow$ `L2_REJECTED`), rating, and notes.
 
-### Scenario 5: Recruiter 360 Tracking & Final Decision
+### Scenario 5: Recruiter 360 Tracking & Pipeline Control
 - **Given** a Recruiter viewing the **Drive Pipeline Dashboard**:
-- **When** filtering or searching candidates:
-  - Sees real-time stage funnel: `Registered` $\rightarrow$ `Test Completed` $\rightarrow$ `L1 Pool` $\rightarrow$ `L2 Pool` $\rightarrow$ `Selected / Rejected`.
-  - For any candidate, clicks to view full lifecycle audit:
-    - Test score & percentage.
-    - L1 interviewer, L1 claim time, L1 rating & rejection reason (if rejected).
-    - L2 interviewer, L2 rating, and final feedback.
-  - Issues final Offer / Reject status update.
+- **When** viewing the candidate tracking table:
+  - Real-time status badges: `Test In Progress` $\rightarrow$ `Test Rejected` $\rightarrow$ `L1 Pool (Unclaimed/Claimed)` $\rightarrow$ `L2 Pool` $\rightarrow$ `Selected / Rejected`.
+  - Recruiter can inspect candidate drawer:
+    - Initial registration info & device type (Laptop / Mobile).
+    - Test score vs cutoff, tab-switch count.
+    - L1 interviewer name, score, rejection reason (if rejected).
+    - L2 interviewer name, score, and final notes.
 
 ---
 
-## 4. Functional Requirements
+## 5. Functional Requirements
 
-### 4.1 Authentication & Role-Based Access Control (RBAC)
-- **`FR-001`**: System shall support 4 distinct role scopes: `admin`, `recruiter`, `l1_interviewer`, and `l2_interviewer`.
-- **`FR-002`**: Role permissions must be enforced on all backend API routes via dependency injection guards.
-- **`FR-003`**: Navigation sidebar and dashboards must dynamically adapt based on the active user's role.
+### 5.1 Drive Creation & Magic Link / QR Code
+- **`FR-001`**: Recruiter/Admin creates drive with job description, onboarding fields, question paper, and cutoff score.
+- **`FR-002`**: System generates a unique, persistent **Drive Magic Link** (e.g. `/drive/{id}/apply`) and renders a scannable **QR Code** (PNG/SVG) on the recruiter dashboard for distribution.
 
-### 4.2 Recruitment Drive & Assessment Paper Management
-- **`FR-004`**: Recruiters and Admins shall be able to create, edit, publish, pause, and close recruitment drives.
-- **`FR-005`**: Drive setup must allow defining custom onboarding fields (e.g. experience in years, referral source, portfolio).
-- **`FR-006`**: Drive setup must include question paper assembly with question text, options/boilerplate, correct answer keys, and individual marks.
-- **`FR-007`**: Drive setup must define a configurable Cutoff Percentage (%) to qualify for L1, and an option to toggle automated candidate rejection emails on/off upon stage failure.
+### 5.2 Candidate Onboarding & Device-Aware Proctoring
+- **`FR-003`**: Candidate opens magic link/QR code, enters email, and fills required profile info (Name, Phone, Experience, Referral).
+- **`FR-004`**: System renders a prominent **Proctoring Warning & Agreement Screen** detailing full-screen requirement and tab-switch logging before test activation.
+- **`FR-005`**: System detects runtime device mode:
+  - **Laptop/Desktop Web**: Enforces HTML5 Fullscreen API and browser blur/visibilitychange event listeners.
+  - **Mobile Web**: Enforces Page Visibility API and mobile app-switch/tab-blur event listeners with responsive touch layouts.
+- **`FR-006`**: Tab switches and window leaves display warnings and log proctoring telemetry flags.
+- **`FR-007`**: System auto-grades test on submission:
+  - $\text{Score} \ge \text{Cutoff} \implies$ Status `L1_ELIGIBLE`.
+  - $\text{Score} < \text{Cutoff} \implies$ Status `TEST_REJECTED`.
 
-### 4.3 Candidate Assessment Execution & Auto-Grading
-- **`FR-008`**: Candidates access tests via zero-account magic token + OTP.
-- **`FR-009`**: Candidate onboarding form must capture Name, Email, Experience, Referral, and custom fields before test start.
-- **`FR-010`**: System shall evaluate answers upon submission:
-  - Candidates scoring $\ge \text{Cutoff}$ automatically transition to `L1_ELIGIBLE`.
-  - Candidates scoring $< \text{Cutoff}$ transition to `TEST_REJECTED` with exact score logged.
+### 5.3 L1 & L2 Interviewer Pools & Reviewer Dossiers
+- **`FR-008`**: L1 pool lists `L1_ELIGIBLE` candidates; L1 interviewer can **Claim** or **Release** candidate.
+- **`FR-009`**: L1 dossier presents candidate info, test paper with submitted vs correct answers, and proctoring telemetry summary.
+- **`FR-010`**: L1 feedback submission advances candidate to `L2_ELIGIBLE` (on Pass) or `L1_REJECTED` (on Reject).
+- **`FR-011`**: L2 pool lists `L2_ELIGIBLE` candidates; L2 interviewer can Claim or Release candidate.
+- **`FR-012`**: L2 dossier presents candidate profile, test paper, AND **L1 interviewer ratings & feedback comments**.
+- **`FR-013`**: L2 feedback submission advances candidate to `L2_CLEARED` (on Pass) or `L2_REJECTED` (on Reject).
 
-### 4.4 L1 Interviewer Pool & Claim Workflow
-- **`FR-011`**: L1 pool endpoint shall list candidates with status `L1_ELIGIBLE` or claimed by current L1 user.
-- **`FR-012`**: L1 interviewer can click **"Claim"**, locking candidate to their `user_id` and setting status to `L1_IN_PROGRESS`. L1 interviewers can also click **"Release / Unclaim"** to return the candidate to the pool, and claimed candidates auto-release back to pool if no feedback is submitted within 24 hours.
-- **`FR-013`**: L1 dossier shall display:
-  - Candidate profile & onboarding answers (experience, referral, etc.).
-  - Submitted assessment paper with question text, chosen answers, correct answers, and scores.
-- **`FR-014`**: L1 interviewer can submit feedback: Verdict (`PASS` / `REJECT`), 1-5 rating, and notes.
-  - On `PASS`, candidate transitions to `L2_ELIGIBLE`.
-  - On `REJECT`, candidate transitions to `L1_REJECTED` with reason recorded.
-
-### 4.5 L2 Interviewer Pool & Claim Workflow
-- **`FR-015`**: L2 pool endpoint shall list candidates with status `L2_ELIGIBLE` or claimed by current L2 user.
-- **`FR-016`**: L2 interviewer can click **"Claim"**, locking candidate to `L2_IN_PROGRESS`, with ability to release/unclaim and automatic 24h expiration.
-- **`FR-017`**: L2 dossier shall display candidate profile, test paper, AND **L1 feedback notes & score**.
-- **`FR-018`**: L2 interviewer submits evaluation: Verdict (`PASS` / `REJECT`), rating, and notes.
-  - On `PASS`, candidate transitions to `L2_CLEARED` (or `SELECTED`).
-  - On `REJECT`, candidate transitions to `L2_REJECTED` with reason recorded.
-
-### 4.6 Recruiter End-to-End Tracking & Candidate 360
-- **`FR-019`**: Recruiter dashboard must provide a unified tracking board with filters by stage (`ALL`, `TEST_PENDING`, `L1_POOL`, `L2_POOL`, `SELECTED`, `REJECTED`).
-- **`FR-020`**: Candidate drawer/modal must display complete audit trail:
-  - Test Score & Cutoff comparison.
-  - L1 Interviewer, claim timestamp, rating, feedback comments.
-  - L2 Interviewer, rating, feedback comments.
-  - Rejection stage and reason (if rejected).
-
----
-
-## 5. Success Criteria & Quality Metrics
-
-1. **SC-001**: Role switching and permissions barriers function with 100% tenant and role isolation.
-2. **SC-002**: L1 and L2 interviewers can claim, view complete test paper answers, and submit evaluations in $<3$ clicks.
-3. **SC-003**: Candidates scoring above cutoff appear in L1 pool within $<1$ second of test submission.
-4. **SC-004**: Recruiters have 100% visibility into where every candidate stands, who evaluated them, and exact rejection reasons.
+### 5.4 Recruiter Pipeline & Candidate 360 Tracking
+- **`FR-014`**: Recruiter dashboard provides real-time search and filter across all stages (`ALL`, `TEST_PENDING`, `L1_POOL`, `L2_POOL`, `SELECTED`, `REJECTED`).
+- **`FR-015`**: Candidate drawer displays complete chronological audit:
+  - Onboarding details (experience, referral, device).
+  - Assessment score, cutoff threshold, proctoring flags.
+  - L1 reviewer, rating, and rejection notes (if any).
+  - L2 reviewer, rating, and final feedback.
