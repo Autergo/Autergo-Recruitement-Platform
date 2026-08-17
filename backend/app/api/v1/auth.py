@@ -59,6 +59,31 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     user = result.scalars().first()
     
+    # Auto-create admin or recruiter if database had not yet seeded
+    if not user:
+        if clean_email in ["admin@autergo.com", "recruiter@autergo.com"]:
+            org_stmt = select(Organization).limit(1)
+            org_res = await db.execute(org_stmt)
+            org = org_res.scalar_one_or_none()
+            if not org:
+                org = Organization(name="Autergo Technologies", slug="autergo-hq")
+                db.add(org)
+                await db.flush()
+            
+            is_admin = clean_email == "admin@autergo.com"
+            pwd = "Admin@123" if is_admin else "Recruiter@123"
+            user = User(
+                tenant_id=org.id,
+                email=clean_email,
+                password_hash=get_password_hash(pwd),
+                full_name="Alex Mercer (Admin)" if is_admin else "Samantha Ray (Recruiter)",
+                role="admin" if is_admin else "recruiter",
+                is_active=True
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
