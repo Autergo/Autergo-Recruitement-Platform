@@ -39,8 +39,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.v1 import auth, drives, public, questions, interviews, communications, organizations
+
 # Register API Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(organizations.router, prefix=settings.API_V1_STR)
 app.include_router(drives.router, prefix=settings.API_V1_STR)
 app.include_router(public.router, prefix=settings.API_V1_STR)
 app.include_router(questions.router, prefix=settings.API_V1_STR)

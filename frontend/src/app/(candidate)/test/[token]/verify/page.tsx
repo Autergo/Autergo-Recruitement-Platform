@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
 
 export default function CandidateVerifyPage() {
   const params = useParams();
@@ -18,10 +17,15 @@ export default function CandidateVerifyPage() {
   useEffect(() => {
     async function checkToken() {
       try {
-        const res = await apiClient.get(`/public/invitations/${token}`);
-        setDriveInfo(res.data);
+        const res = await fetch(`http://localhost:8000/api/v1/public/invitations/${token}`);
+        if (res.ok) {
+          setDriveInfo(await res.json());
+        } else {
+          const err = await res.json().catch(() => ({}));
+          setError(err.detail || 'Invalid invitation link.');
+        }
       } catch (err: any) {
-        setError(err.response?.data?.detail || 'Invalid invitation link.');
+        setError('Invalid invitation link.');
       }
     }
     if (token) checkToken();
@@ -33,15 +37,25 @@ export default function CandidateVerifyPage() {
     setError('');
 
     try {
-      const res = await apiClient.post('/public/verify', {
-        invitation_token: token,
-        email,
-        otp
+      const res = await fetch('http://localhost:8000/api/v1/public/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invitation_token: token,
+          email,
+          otp,
+        }),
       });
-      localStorage.setItem('candidate_session_token', res.data.session_token);
-      router.push(`/test/${token}/readiness`);
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('candidate_session_token', data.session_token);
+        router.push(`/test/${token}/readiness`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setError(err.detail || 'Verification failed.');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Verification failed.');
+      setError('Verification failed.');
     } finally {
       setLoading(false);
     }
