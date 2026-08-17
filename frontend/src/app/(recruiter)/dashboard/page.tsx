@@ -33,6 +33,13 @@ export default function UnifiedDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'recruiter' | 'l1_interviewer' | 'l2_interviewer'>('recruiter');
   const [creatingUser, setCreatingUser] = useState(false);
+  const [systemHealth, setSystemHealth] = useState({
+    database: 'CONNECTED',
+    server_status: 'HEALTHY',
+    active_drives: 0,
+    total_candidates: 0,
+    security_checks: 'PASSED (RBAC, Geolocation & Whitelist Enforced)',
+  });
 
   useEffect(() => {
     if (activeRole === 'admin') fetchAdminUsers();
