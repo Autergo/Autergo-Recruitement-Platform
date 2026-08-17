@@ -54,7 +54,8 @@ def require_roles(allowed_roles: List[str]):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == req.email, User.is_active == True)
+    clean_email = req.email.strip().lower()
+    stmt = select(User).where(User.email.ilike(clean_email), User.is_active == True)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
     
