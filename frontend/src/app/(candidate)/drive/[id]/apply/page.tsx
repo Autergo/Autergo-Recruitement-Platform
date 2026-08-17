@@ -26,6 +26,7 @@ export default function CandidateApplyPage() {
 
   useEffect(() => {
     fetchDriveDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driveId]);
 
   const fetchDriveDetails = async () => {

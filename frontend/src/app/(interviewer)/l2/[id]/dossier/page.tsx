@@ -20,6 +20,7 @@ export default function L2CandidateDossierPage() {
 
   useEffect(() => {
     fetchDossier();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId]);
 
   const fetchDossier = async () => {

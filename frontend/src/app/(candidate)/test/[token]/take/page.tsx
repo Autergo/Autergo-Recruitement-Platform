@@ -111,6 +111,7 @@ export default function CandidateTakeAssessment() {
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const enterFullscreen = async () => {
