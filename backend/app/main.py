@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.ws_manager import ws_manager
-from app.api.v1 import auth, drives, public, questions, interviews, communications
+from app.api.v1 import auth, drives, public, questions, interviews, communications, organizations
 
 # Import all models to ensure metadata registration
 import app.models.organization
@@ -38,8 +38,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from app.api.v1 import auth, drives, public, questions, interviews, communications, organizations
 
 # Register API Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)

@@ -296,101 +296,16 @@ export default function UnifiedDashboard() {
 
       <main className="max-w-7xl mx-auto w-full px-6 py-8 flex-1 space-y-8">
         {/* ========================================================================= */}
-        {/* 🌟 ROLE-BASED WORKSPACE SELECTOR (Render only authorized tabs) */}
+        {/* 🌟 ROLE-BASED WORKSPACE SELECTOR (Strictly locked to Admin Command) */}
         {/* ========================================================================= */}
         {isAdmin && (
           <section className="space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Admin Governance & Role Switcher
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* 1. Admin Card */}
-              <button
-                type="button"
-                onClick={() => setActiveRole('admin')}
-                className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
-                  activeRole === 'admin'
-                    ? 'bg-blue-950/80 border-blue-500 shadow-xl shadow-blue-950/50 ring-1 ring-blue-500'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700 opacity-75 hover:opacity-100'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-2xl">🛡️</span>
-                  {activeRole === 'admin' && (
-                    <span className="text-[10px] bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full">ACTIVE</span>
-                  )}
-                </div>
-                <div className="font-bold text-white text-sm">1. Admin Command</div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  System telemetry, user role allocations, health & data security.
-                </p>
-              </button>
-
-              {/* 2. Recruiter Card */}
-              <button
-                type="button"
-                onClick={() => setActiveRole('recruiter')}
-                className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
-                  activeRole === 'recruiter'
-                    ? 'bg-emerald-950/80 border-emerald-500 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700 opacity-75 hover:opacity-100'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-2xl">💼</span>
-                  {activeRole === 'recruiter' && (
-                    <span className="text-[10px] bg-emerald-500 text-white font-bold px-2 py-0.5 rounded-full">ACTIVE</span>
-                  )}
-                </div>
-                <div className="font-bold text-white text-sm">2. Recruiter Portal</div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Create drives & manage candidates inside each isolated campaign.
-                </p>
-              </button>
-
-              {/* 3. L1 Interviewer Card */}
-              <button
-                type="button"
-                onClick={() => setActiveRole('l1')}
-                className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
-                  activeRole === 'l1'
-                    ? 'bg-amber-950/80 border-amber-500 shadow-xl shadow-amber-950/50 ring-1 ring-amber-500'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700 opacity-75 hover:opacity-100'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-2xl">💻</span>
-                  {activeRole === 'l1' && (
-                    <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full">ACTIVE</span>
-                  )}
-                </div>
-                <div className="font-bold text-white text-sm">3. L1 Technical Pool</div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Pick drive, claim L1 candidates, review test papers & live GPS.
-                </p>
-              </button>
-
-              {/* 4. L2 Interviewer Card */}
-              <button
-                type="button"
-                onClick={() => setActiveRole('l2')}
-                className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
-                  activeRole === 'l2'
-                    ? 'bg-purple-950/80 border-purple-500 shadow-xl shadow-purple-950/50 ring-1 ring-purple-500'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700 opacity-75 hover:opacity-100'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-2xl">👥</span>
-                  {activeRole === 'l2' && (
-                    <span className="text-[10px] bg-purple-500 text-white font-bold px-2 py-0.5 rounded-full">ACTIVE</span>
-                  )}
-                </div>
-                <div className="font-bold text-white text-sm">4. L2 Panel Pool</div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Pick drive, inspect L1 feedback notes & give final hiring verdict.
-                </p>
-              </button>
+            <div className="flex items-center gap-3 bg-blue-950/40 border border-blue-900/60 p-4 rounded-2xl">
+              <span className="text-2xl">🛡️</span>
+              <div>
+                <div className="text-sm font-bold text-white">Administrator Command & Governance Workspace</div>
+                <p className="text-xs text-slate-400">Strict RBAC Enforced: Admin manages tenant security, custom roles, and user accounts.</p>
+              </div>
             </div>
           </section>
         )}
