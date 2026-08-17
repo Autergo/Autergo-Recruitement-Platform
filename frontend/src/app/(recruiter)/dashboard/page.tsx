@@ -218,38 +218,46 @@ export default function UnifiedDashboard() {
             AUTERGO
           </Link>
           <nav className="flex gap-2 text-xs font-bold bg-slate-950 p-1 rounded-xl border border-slate-800">
-            <button
-              onClick={() => setActiveTab('recruiter')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'recruiter' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Recruiter Campaigns
-            </button>
-            <button
-              onClick={() => setActiveTab('l1')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'l1' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              L1 Pool
-            </button>
-            <button
-              onClick={() => setActiveTab('l2')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'l2' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              L2 Pool
-            </button>
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'admin' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Admin & Health
-            </button>
+            {(currentUser?.role === 'recruiter' || currentUser?.role === 'admin' || currentUser?.role === 'org_admin') && (
+              <button
+                onClick={() => setActiveTab('recruiter')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  activeTab === 'recruiter' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Recruiter Campaigns
+              </button>
+            )}
+            {(currentUser?.role === 'l1_interviewer' || currentUser?.role === 'recruiter' || currentUser?.role === 'admin' || currentUser?.role === 'org_admin') && (
+              <button
+                onClick={() => setActiveTab('l1')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  activeTab === 'l1' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                L1 Pool
+              </button>
+            )}
+            {(currentUser?.role === 'l2_interviewer' || currentUser?.role === 'recruiter' || currentUser?.role === 'admin' || currentUser?.role === 'org_admin') && (
+              <button
+                onClick={() => setActiveTab('l2')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  activeTab === 'l2' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                L2 Pool
+              </button>
+            )}
+            {(currentUser?.role === 'admin' || currentUser?.role === 'org_admin') && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  activeTab === 'admin' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Admin & Health
+              </button>
+            )}
           </nav>
         </div>
 
