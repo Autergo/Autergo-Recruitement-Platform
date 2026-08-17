@@ -2,178 +2,278 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
+import Link from 'next/link';
 
-export default function CreateDriveWizard() {
+export default function CreateDrivePage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const [title, setTitle] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [cutoff, setCutoff] = useState(60);
+  const [duration, setDuration] = useState(45);
+  const [sendRejections, setSendRejections] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    title: '',
-    job_title: '',
-    job_description: '',
-    min_cgpa: '7.0',
-    degree: 'B.Tech / B.E Computer Science',
-    camera_proctoring: true,
-    phone_detection: true,
-    tab_switch_limit: 3
-  });
 
-  const handleSubmit = async () => {
+  const [questions, setQuestions] = useState<any[]>([
+    {
+      id: 'q-1',
+      title: 'What is the average time complexity of searching in a hash table?',
+      question_type: 'single_mcq',
+      options: ['O(1)', 'O(log n)', 'O(n)', 'O(n^2)'],
+      correct_answer: 'O(1)',
+      marks: 5,
+    },
+    {
+      id: 'q-2',
+      title: 'Write a Python function `solution(s)` that reverses string `s`.',
+      question_type: 'coding',
+      options: [],
+      boilerplate: 'def solution(s):\n    pass',
+      correct_answer: 'return s[::-1]',
+      marks: 10,
+    },
+  ]);
+
+  const handleAddMCQ = () => {
+    setQuestions([
+      ...questions,
+      {
+        id: `q-${Date.now()}`,
+        title: 'New Multiple Choice Question',
+        question_type: 'single_mcq',
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        correct_answer: 'Option A',
+        marks: 5,
+      },
+    ]);
+  };
+
+  const handleAddCoding = () => {
+    setQuestions([
+      ...questions,
+      {
+        id: `q-${Date.now()}`,
+        title: 'Write an algorithm to solve the problem.',
+        question_type: 'coding',
+        options: [],
+        boilerplate: 'def solution(nums):\n    pass',
+        correct_answer: 'return sorted(nums)',
+        marks: 10,
+      },
+    ]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
+
     try {
-      const payload = {
-        title: form.title,
-        job_title: form.job_title,
-        job_description: form.job_description,
-        eligibility_rules: {
-          min_cgpa: parseFloat(form.min_cgpa),
-          degree: form.degree
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch('http://localhost:8000/api/v1/drives', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        proctoring_config: {
-          camera: form.camera_proctoring,
-          phone: form.phone_detection,
-          tab_switch_limit: form.tab_switch_limit
-        }
-      };
-      const res = await apiClient.post('/drives', payload);
-      // Publish immediately
-      await apiClient.post(`/drives/${res.data.id}/publish`);
-      router.push(`/drives/${res.data.id}`);
+        body: JSON.stringify({
+          title,
+          job_title: jobTitle,
+          job_description: jobDescription,
+          cutoff_percentage: cutoff,
+          duration_minutes: duration,
+          send_rejection_emails: sendRejections,
+          onboarding_fields: ['experience_years', 'referral_source', 'phone'],
+          questions,
+        }),
+      });
+
+      if (res.ok) {
+        router.push('/dashboard');
+      } else {
+        alert('Failed to create drive. Check your backend status.');
+      }
     } catch (err) {
-      alert('Failed to publish drive');
+      console.error(err);
+      alert('Error creating drive.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Create Recruitment Drive</h1>
-        <p className="text-slate-400 mt-1">Step {step} of 3 — Configure your end-to-end recruitment campaign</p>
-      </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <Link href="/dashboard" className="text-sm text-slate-400 hover:text-white">
+            &larr; Back to Dashboard
+          </Link>
+          <span className="text-xs font-mono text-emerald-400">Recruiter Drive Builder</span>
+        </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-xl">
-        {step === 1 && (
-          <div className="space-y-5">
-            <h2 className="text-xl font-semibold text-white border-b border-slate-800 pb-3">Job Details</h2>
+        <h1 className="text-2xl font-bold text-white mb-2">Create & Publish Recruitment Drive</h1>
+        <p className="text-sm text-slate-400 mb-8">
+          Configure job basics, assessment question paper with answer keys, and L1 qualification cutoff %.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* 1. Drive Details */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+            <h2 className="text-base font-bold text-white mb-4">1. Campaign Details</h2>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Drive Campaign Title</label>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Drive Title</label>
               <input
                 type="text"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. AI Software Engineer Campus Drive 2026"
-                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                required
+                placeholder="e.g. Senior Full Stack Engineer 2026"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Target Job Title</label>
-              <input
-                type="text"
-                value={form.job_title}
-                onChange={(e) => setForm({ ...form, job_title: e.target.value })}
-                placeholder="e.g. AI / ML Engineer"
-                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Job Role</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Frontend Engineer"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  L1 Cutoff Percentage (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={cutoff}
+                  onChange={(e) => setCutoff(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Job Description</label>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Job Description</label>
               <textarea
-                rows={4}
-                value={form.job_description}
-                onChange={(e) => setForm({ ...form, job_description: e.target.value })}
-                placeholder="Outline core responsibilities, key technologies, and requirements..."
-                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                rows={3}
+                required
+                placeholder="Key requirements and candidate expectations..."
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
-            <button
-              onClick={() => setStep(2)}
-              disabled={!form.title || !form.job_title}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium text-white disabled:opacity-50"
-            >
-              Next: Eligibility & Assessment &rarr;
-            </button>
-          </div>
-        )}
 
-        {step === 2 && (
-          <div className="space-y-5">
-            <h2 className="text-xl font-semibold text-white border-b border-slate-800 pb-3">Eligibility & Integrity</h2>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Minimum CGPA / Percentage</label>
+            <div className="flex items-center gap-3 pt-2">
               <input
-                type="text"
-                value={form.min_cgpa}
-                onChange={(e) => setForm({ ...form, min_cgpa: e.target.value })}
-                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                type="checkbox"
+                id="rejections"
+                checked={sendRejections}
+                onChange={(e) => setSendRejections(e.target.checked)}
+                className="rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-emerald-500"
               />
-            </div>
-            <div className="space-y-3 pt-2">
-              <label className="block text-sm font-medium text-slate-300">AI Proctoring Guards</label>
-              <label className="flex items-center gap-3 text-sm text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={form.camera_proctoring}
-                  onChange={(e) => setForm({ ...form, camera_proctoring: e.target.checked })}
-                  className="rounded bg-slate-800 border-slate-700 text-emerald-500"
-                />
-                Continuous Camera Face Presence & Multi-Face Detection
+              <label htmlFor="rejections" className="text-xs text-slate-300">
+                Automatically send email notifications to rejected candidates upon stage failure
               </label>
-              <label className="flex items-center gap-3 text-sm text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={form.phone_detection}
-                  onChange={(e) => setForm({ ...form, phone_detection: e.target.checked })}
-                  className="rounded bg-slate-800 border-slate-700 text-emerald-500"
-                />
-                Phone & Suspicious Object Anomaly Detection
-              </label>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => setStep(1)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium text-slate-300"
-              >
-                &larr; Back
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium text-white"
-              >
-                Next: Review & Publish &rarr;
-              </button>
             </div>
           </div>
-        )}
 
-        {step === 3 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-white border-b border-slate-800 pb-3">Review & Publish</h2>
-            <div className="bg-slate-800/50 rounded-lg p-4 space-y-2 text-sm text-slate-300">
-              <p><span className="text-slate-500 font-medium">Title:</span> {form.title}</p>
-              <p><span className="text-slate-500 font-medium">Role:</span> {form.job_title}</p>
-              <p><span className="text-slate-500 font-medium">Min CGPA:</span> {form.min_cgpa}</p>
-              <p><span className="text-slate-500 font-medium">Proctoring:</span> Camera & Phone Detection Enabled</p>
+          {/* 2. Question Paper Assembly */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-base font-bold text-white">2. Assessment Question Paper & Answer Keys</h2>
+                <p className="text-xs text-slate-400">Define test questions with scoring marks and correct answers.</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddMCQ}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 rounded-lg border border-slate-700"
+                >
+                  + Add MCQ
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddCoding}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 rounded-lg border border-slate-700"
+                >
+                  + Add Coding
+                </button>
+              </div>
             </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setStep(2)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium text-slate-300"
-              >
-                &larr; Back
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all disabled:opacity-50"
-              >
-                {loading ? 'Publishing Drive...' : '🚀 Publish & Activate Recruitment Drive'}
-              </button>
+
+            <div className="space-y-4">
+              {questions.map((q, idx) => (
+                <div key={q.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-mono font-bold text-emerald-400">
+                      Q{idx + 1} ({q.question_type.toUpperCase()})
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">Marks: {q.marks}</span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-slate-400">Question Statement</label>
+                    <input
+                      type="text"
+                      value={q.title}
+                      onChange={(e) => {
+                        const updated = [...questions];
+                        updated[idx].title = e.target.value;
+                        setQuestions(updated);
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
+                    />
+                  </div>
+
+                  {q.question_type === 'single_mcq' ? (
+                    <div>
+                      <label className="text-xs font-medium text-slate-400">Correct Answer (Option Key)</label>
+                      <input
+                        type="text"
+                        value={q.correct_answer}
+                        onChange={(e) => {
+                          const updated = [...questions];
+                          updated[idx].correct_answer = e.target.value;
+                          setQuestions(updated);
+                        }}
+                        className="w-full bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-sm text-emerald-400 font-mono focus:outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-xs font-medium text-slate-400">Expected Solution Pattern / Code</label>
+                      <textarea
+                        rows={2}
+                        value={q.correct_answer}
+                        onChange={(e) => {
+                          const updated = [...questions];
+                          updated[idx].correct_answer = e.target.value;
+                          setQuestions(updated);
+                        }}
+                        className="w-full bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-sm text-emerald-400 font-mono focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xl transition-all disabled:opacity-50 text-sm"
+          >
+            {loading ? 'Publishing Drive...' : '🚀 Publish Drive & Generate Magic Link / QR Code'}
+          </button>
+        </form>
       </div>
     </div>
   );

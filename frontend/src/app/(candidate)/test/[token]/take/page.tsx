@@ -2,203 +2,287 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
 
-export default function AssessmentRunnerPage() {
+export default function CandidateTakeAssessment() {
   const params = useParams();
   const router = useRouter();
-  const token = params.token as string;
 
+  const [questions, setQuestions] = useState<any[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [timeLeft, setTimeLeft] = useState(2700); // 45 minutes default
   const [submitting, setSubmitting] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(3600);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [showWarningToast, setShowWarningToast] = useState(false);
+  const [warningMsg, setWarningMsg] = useState('');
 
-  // Mock assessment questions for candidate runner
-  const questions = [
-    {
-      id: 'q1',
-      type: 'mcq',
-      title: 'Which Python data structure maintains elements in sorted order with O(log n) insertion?',
-      options: ['List', 'Binary Search Tree / heapq', 'Dictionary', 'Set'],
-    },
-    {
-      id: 'q2',
-      type: 'code',
-      title: 'Write a function `solution(s)` in Python that reverses the input string.',
-      initialCode: 'def solution(s):\n    # Write code here\n    return s[::-1]',
-    },
-    {
-      id: 'q3',
-      type: 'mcq',
-      title: 'What ACID property guarantees that all database updates in a transaction succeed or fail together?',
-      options: ['Atomicity', 'Consistency', 'Isolation', 'Durability'],
-    }
-  ];
-
-  // Timer countdown
   useEffect(() => {
+    // Load stored questions
+    const rawQ = localStorage.getItem('candidate_assessment_questions');
+    if (rawQ) {
+      try {
+        setQuestions(JSON.parse(rawQ));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      // Default questions fallback
+      setQuestions([
+        {
+          id: 'q-1',
+          title: 'What is the average time complexity of searching in a hash table?',
+          question_type: 'single_mcq',
+          options: ['O(1)', 'O(log n)', 'O(n)', 'O(n^2)'],
+          marks: 5,
+        },
+        {
+          id: 'q-2',
+          title: 'Write a Python function `solution(s)` that reverses string `s`.',
+          question_type: 'coding',
+          boilerplate: 'def solution(s):\n    pass',
+          marks: 10,
+        },
+      ]);
+    }
+
+    // Timer countdown
     const timer = setInterval(() => {
-      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
-    return () => clearInterval(timer);
+
+    // Proctoring: Detect Tab Switches & Focus Loss (Laptop & Mobile Web)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        logTelemetryViolation('TAB_SWITCH_OR_MINIMIZED');
+      }
+    };
+
+    const handleWindowBlur = () => {
+      logTelemetryViolation('WINDOW_FOCUS_LOST');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
   }, []);
 
-  const handleSelectOption = (qId: string, opt: string) => {
-    setAnswers((prev) => ({ ...prev, [qId]: opt }));
+  const logTelemetryViolation = (eventType: string) => {
+    setTabSwitchCount((prev) => {
+      const updated = prev + 1;
+      setWarningMsg(`⚠️ Proctoring Warning: Window focus lost / tab switched! (Incident #${updated})`);
+      setShowWarningToast(true);
+      setTimeout(() => setShowWarningToast(false), 4000);
+      return updated;
+    });
+
+    const token = localStorage.getItem('candidate_session_token');
+    if (token) {
+      fetch('http://localhost:8000/api/v1/public/proctoring/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ event_type: eventType, timestamp: new Date().toISOString() }),
+      }).catch(console.error);
+    }
   };
 
-  const handleCodeChange = (qId: string, code: string) => {
-    setAnswers((prev) => ({ ...prev, [qId]: code }));
+  const handleAnswerSelect = (val: any) => {
+    const q = questions[currentIdx];
+    if (q) {
+      setAnswers({
+        ...answers,
+        [q.id]: val,
+      });
+    }
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const sessionToken = localStorage.getItem('candidate_session_token');
-      await apiClient.post(
-        '/public/assessment/submit',
-        {},
-        {
-          headers: { Authorization: `Bearer ${sessionToken}` },
-        }
-      );
-      setCompleted(true);
+      const token = localStorage.getItem('candidate_session_token');
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      const res = await fetch('http://localhost:8000/api/v1/public/assessment/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          answers,
+          device_type: isMobile ? 'mobile' : 'laptop',
+          proctoring_telemetry: {
+            tab_switches: tabSwitchCount,
+            device_type: isMobile ? 'mobile' : 'laptop',
+          },
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Test Submitted Successfully!\nYour Score: ${data.score}/${data.total} (${data.percentage.toFixed(1)}%)`);
+        router.push('/');
+      } else {
+        alert('Test submitted.');
+        router.push('/');
+      }
     } catch (err) {
-      setCompleted(true); // Complete locally if session mock
+      console.error(err);
+      alert('Test recorded.');
+      router.push('/');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (completed) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-          <div className="w-16 h-16 bg-emerald-950 border border-emerald-800 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-            ✓
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Assessment Submitted</h1>
-          <p className="text-sm text-slate-400">
-            Your responses and proctoring telemetry have been securely recorded. The recruitment team will review your evaluation shortly.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const currentQ = questions[currentIdx];
-  const mins = Math.floor(secondsLeft / 60);
-  const secs = secondsLeft % 60;
+  const currentQ = questions[currentIdx] || questions[0];
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top Bar */}
-      <header className="h-16 border-b border-slate-800 bg-slate-900 px-8 flex justify-between items-center">
-        <span className="font-bold text-lg text-emerald-400">AUTERGO ASSESSMENT</span>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-xs text-slate-400 font-mono">Proctoring Active</span>
-          </div>
-          <div className="bg-slate-800 border border-slate-700 px-4 py-1.5 rounded-lg font-mono text-sm font-semibold">
-            ⏱ {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+      {/* Top Proctoring & Timer Bar */}
+      <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-extrabold tracking-wider text-emerald-400">AUTERGO ASSESSMENT</span>
+          <span className="text-xs font-mono bg-slate-800 px-2.5 py-1 rounded text-slate-300">
+            Question {currentIdx + 1} of {questions.length}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {tabSwitchCount > 0 && (
+            <span className="text-xs font-mono bg-rose-950 border border-rose-800 text-rose-300 px-3 py-1 rounded-full font-bold animate-pulse">
+              ⚠️ {tabSwitchCount} Tab Switch Violation(s)
+            </span>
+          )}
+          <div className="text-sm font-mono font-bold bg-slate-950 px-4 py-1.5 rounded-lg border border-slate-800 text-emerald-400">
+            ⏳ {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
           </div>
         </div>
       </header>
 
-      {/* Main Runner Area */}
-      <div className="flex-1 flex max-w-7xl mx-auto w-full p-8 gap-8">
-        {/* Question Panel */}
-        <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-8 flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <span className="text-xs font-semibold px-2.5 py-1 bg-slate-800 rounded text-slate-400">
-              Question {currentIdx + 1} of {questions.length}
-            </span>
-            <span className="text-xs text-emerald-400">✓ Auto-saved</span>
-          </div>
+      {/* Warning Toast */}
+      {showWarningToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-rose-600 text-white text-xs font-bold px-6 py-3 rounded-full shadow-2xl animate-bounce">
+          {warningMsg}
+        </div>
+      )}
 
-          <h2 className="text-xl font-medium mb-6">{currentQ.title}</h2>
-
-          {currentQ.type === 'mcq' && (
-            <div className="space-y-3 flex-1">
-              {currentQ.options?.map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSelectOption(currentQ.id, opt)}
-                  className={`w-full text-left p-4 rounded-lg border transition-all ${
-                    answers[currentQ.id] === opt
-                      ? 'bg-emerald-950/60 border-emerald-600 text-emerald-200'
-                      : 'bg-slate-800/60 border-slate-700 hover:border-slate-600 text-slate-300'
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
+      {/* Main Question & Answering Area */}
+      <main className="max-w-4xl mx-auto w-full px-6 py-8 flex-1 flex flex-col justify-between">
+        {currentQ && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold uppercase tracking-wider bg-slate-800 text-slate-300 px-3 py-1 rounded">
+                {currentQ.question_type === 'coding' ? '💻 Coding Challenge' : '📝 Multiple Choice Question'}
+              </span>
+              <span className="text-xs text-emerald-400 font-mono font-bold">
+                Marks: {currentQ.marks}
+              </span>
             </div>
-          )}
 
-          {currentQ.type === 'code' && (
-            <div className="flex-1 flex flex-col">
-              <textarea
-                rows={10}
-                value={answers[currentQ.id] || currentQ.initialCode}
-                onChange={(e) => handleCodeChange(currentQ.id, e.target.value)}
-                className="w-full flex-1 p-4 bg-slate-950 font-mono text-sm border border-slate-700 rounded-lg text-emerald-400 focus:outline-none"
-              />
-            </div>
-          )}
+            <h2 className="text-xl font-bold text-white leading-relaxed">{currentQ.title}</h2>
 
-          <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-800">
-            <button
-              onClick={() => setCurrentIdx((prev) => Math.max(0, prev - 1))}
-              disabled={currentIdx === 0}
-              className="px-5 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm disabled:opacity-50"
-            >
-              &larr; Previous
-            </button>
-            {currentIdx === questions.length - 1 ? (
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-lg text-white"
-              >
-                {submitting ? 'Submitting...' : 'Submit Final Assessment'}
-              </button>
+            {currentQ.question_type === 'single_mcq' ? (
+              <div className="space-y-3 pt-4">
+                {(currentQ.options || []).map((opt: string) => {
+                  const isSelected = answers[currentQ.id] === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => handleAnswerSelect(opt)}
+                      className={`w-full p-4 rounded-xl border text-left text-sm font-medium transition-all flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-md'
+                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <span>{opt}</span>
+                      {isSelected && <span className="text-emerald-400 font-bold">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
             ) : (
-              <button
-                onClick={() => setCurrentIdx((prev) => Math.min(questions.length - 1, prev + 1))}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 font-medium rounded-lg text-white text-sm"
-              >
-                Next &rarr;
-              </button>
+              <div className="pt-2">
+                <label className="text-xs text-slate-400 mb-2 block font-mono">Solution Code (Python / JS)</label>
+                <textarea
+                  rows={8}
+                  value={answers[currentQ.id] || currentQ.boilerplate || ''}
+                  onChange={(e) => handleAnswerSelect(e.target.value)}
+                  className="w-full p-4 bg-slate-900 border border-slate-800 rounded-xl font-mono text-sm text-emerald-300 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Sidebar Navigation */}
-        <div className="w-72 bg-slate-900 border border-slate-800 rounded-xl p-6 h-fit">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">Question Overview</h3>
-          <div className="grid grid-cols-4 gap-2">
-            {questions.map((q, idx) => (
+        {/* Question Navigation Controls */}
+        <div className="flex justify-between items-center pt-8 border-t border-slate-800 mt-8">
+          <button
+            type="button"
+            disabled={currentIdx === 0}
+            onClick={() => setCurrentIdx((prev) => prev - 1)}
+            className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded-lg border border-slate-800 disabled:opacity-40"
+          >
+            &larr; Previous
+          </button>
+
+          <div className="flex gap-2">
+            {questions.map((_, i) => (
               <button
-                key={q.id}
-                onClick={() => setCurrentIdx(idx)}
-                className={`py-2 text-xs font-semibold rounded ${
-                  idx === currentIdx
-                    ? 'ring-2 ring-emerald-500 bg-slate-800 text-white'
-                    : answers[q.id]
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : 'bg-slate-800 text-slate-400'
+                key={i}
+                type="button"
+                onClick={() => setCurrentIdx(i)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold ${
+                  currentIdx === i
+                    ? 'bg-emerald-500 text-slate-950'
+                    : answers[questions[i]?.id]
+                    ? 'bg-emerald-950 border border-emerald-800 text-emerald-300'
+                    : 'bg-slate-900 text-slate-400'
                 }`}
               >
-                {idx + 1}
+                {i + 1}
               </button>
             ))}
           </div>
+
+          {currentIdx < questions.length - 1 ? (
+            <button
+              type="button"
+              onClick={() => setCurrentIdx((prev) => prev + 1)}
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg"
+            >
+              Next &rarr;
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-lg disabled:opacity-50"
+            >
+              {submitting ? 'Submitting...' : 'Submit Assessment'}
+            </button>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
