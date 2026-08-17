@@ -42,7 +42,12 @@ export default function UnifiedDashboard() {
   });
 
   // Custom Roles State & Modal
-  const [customRoles, setCustomRoles] = useState<any[]>([]);
+  const [customRoles, setCustomRoles] = useState<any[]>([
+    { role_key: 'recruiter', role_name: 'Recruiter / Talent Lead', description: 'Drive lifecycle, candidate whitelist import, single/bulk scheduling, attempt unlocking.' },
+    { role_key: 'admin', role_name: 'System Administrator', description: 'Full platform administration, security, and role allocation.' },
+    { role_key: 'l1_interviewer', role_name: 'L1 Technical Evaluator', description: 'L1 pool claim, test paper answers, live GPS coordinates, pass to L2.' },
+    { role_key: 'l2_interviewer', role_name: 'L2 Panel Reviewer', description: 'L2 pool claim, L1 evaluator notes & ratings, final hiring decision.' }
+  ]);
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
   const [newRoleKey, setNewRoleKey] = useState('');
   const [newRoleName, setNewRoleName] = useState('');
