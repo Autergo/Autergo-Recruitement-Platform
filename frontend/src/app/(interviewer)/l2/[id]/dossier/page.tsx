@@ -19,26 +19,25 @@ export default function L2CandidateDossierPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchDossier();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applicationId]);
-
-  const fetchDossier = async () => {
-    try {
-      const token = localStorage.getItem('autergo_token');
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/l2/${applicationId}/dossier`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDossier(data);
+    const fetchDossier = async () => {
+      try {
+        const token = localStorage.getItem('autergo_token');
+        const res = await fetch(`http://localhost:8000/api/v1/interviews/l2/${applicationId}/dossier`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setDossier(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchDossier();
+  }, [applicationId]);
 
   const handleEvaluate = async (e: React.FormEvent) => {
     e.preventDefault();

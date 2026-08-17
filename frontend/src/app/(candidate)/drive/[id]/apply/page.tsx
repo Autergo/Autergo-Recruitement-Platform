@@ -25,23 +25,22 @@ export default function CandidateApplyPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchDriveDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driveId]);
-
-  const fetchDriveDetails = async () => {
-    try {
-      const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setDrive(data);
+    const fetchDriveDetails = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDrive(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchDriveDetails();
+  }, [driveId]);
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
