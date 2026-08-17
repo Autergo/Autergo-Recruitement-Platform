@@ -1,62 +1,44 @@
-# Tasks: Streamlined 4-Actor Recruitment Platform
+# Tasks: Unified Dashboard, Excel Whitelist, Geolocation Anti-Cheat & Candidate Attempt Lifecycle
 
-**Input**: Design documents from `specs/002-streamlined-recruitment-pipeline/`  
-**Status**: Completed (`30/30 Tasks Complete`)
-
----
-
-## Phase 1: Setup & Foundational
-- [X] T001 [P] Ensure SQLite/Postgres async database schemas and migrations support custom onboarding and proctoring fields in `backend/app/models/`
-- [X] T002 [P] Configure RBAC authentication dependency guards for `admin`, `recruiter`, `l1_interviewer`, and `l2_interviewer` in `backend/app/api/v1/auth.py`
-- [X] T003 Setup modern navigation bar and role-adaptive dashboard layout in `frontend/src/app/(recruiter)/layout.tsx`
+**Input**: Design documents from `specs/002-streamlined-recruitment-pipeline/` (v2.2.0)  
+**Status**: Ready for Execution  
 
 ---
 
-## Phase 2: User Story 1 — Recruiter Drive Creation & Magic Link / QR Code Generation (P1) 🎯
-- [X] T004 [US1] Implement Drive creation endpoint supporting question papers with answer keys, cutoff %, and rejection email toggles in `backend/app/api/v1/drives.py`
-- [X] T005 [US1] Implement Drive Magic Link (`/drive/{id}/apply`) and QR code generation endpoint in `backend/app/api/v1/drives.py`
-- [X] T006 [P] [US1] Build Recruiter Drive Creation UI with question & answer editor in `frontend/src/app/(recruiter)/drives/create/page.tsx`
-- [X] T007 [P] [US1] Build Drive Share Modal displaying the Magic Link and scannable QR Code in `frontend/src/app/(recruiter)/dashboard/page.tsx`
+## Phase 1: Setup & RBAC Enhancements
+- [ ] T001 [P] Ensure database models support candidate whitelist flag, live geolocation coordinates, single-attempt lock state, and interview scheduling slots in `backend/app/models/`
+- [ ] T002 [P] Implement fast Name-Based Authentication endpoint for L1 & L2 interviewers and interviewer list endpoint in `backend/app/api/v1/auth.py`
+- [ ] T003 Build Dual-Mode Login Screen (Email/Password for Admin/Recruiter + Name Quick-Access for Interviewers) in `frontend/src/app/login/page.tsx`
 
 ---
 
-## Phase 3: User Story 2 — Candidate Onboarding, Dual-Device Proctoring & Timed Test (P1) 🎯
-- [X] T008 [US2] Implement public drive info and candidate registration endpoint in `backend/app/api/v1/public.py`
-- [X] T009 [US2] Implement candidate answer submission and automated cutoff grading (`L1_ELIGIBLE` vs `TEST_REJECTED`) in `backend/app/api/v1/public.py`
-- [X] T010 [US2] Implement tab-switch and fullscreen-blur telemetry logging endpoint in `backend/app/api/v1/public.py`
-- [X] T011 [P] [US2] Build Candidate Public Registration & Onboarding Info page in `frontend/src/app/(candidate)/drive/[id]/apply/page.tsx`
-- [X] T012 [P] [US2] Build Proctoring Warning & Consent modal with device detection (Laptop / Mobile) in `frontend/src/app/(candidate)/drive/[id]/apply/page.tsx`
-- [X] T013 [US2] Build Responsive Candidate Assessment Runner with fullscreen enforcement, tab-switch listeners, and live auto-save in `frontend/src/app/(candidate)/test/[token]/take/page.tsx`
+## Phase 2: Excel / CSV Whitelist Ingestion & Auto-Fill
+- [ ] T004 [P] Implement Excel (`.xlsx`, `.xls`) and CSV file upload & parsing endpoint for drive whitelisting in `backend/app/api/v1/drives.py`
+- [ ] T005 Implement candidate whitelist verification and instant profile auto-fill endpoint in `backend/app/api/v1/public.py`
+- [ ] T006 Build Excel/CSV Whitelist Upload modal component with preview table in `frontend/src/components/drives/excel-whitelist-modal.tsx`
+- [ ] T007 Update Candidate Registration page to verify email against whitelist, auto-fill profile details, and capture live GPS geolocation in `frontend/src/app/(candidate)/drive/[id]/apply/page.tsx`
 
 ---
 
-## Phase 4: User Story 3 — L1 Technical Interviewer Pool & Evaluation (P1) 🎯
-- [X] T014 [US3] Implement L1 candidate pool listing, claim lock, and release endpoints in `backend/app/api/v1/interviews.py`
-- [X] T015 [US3] Implement L1 candidate dossier endpoint (profile + submitted test paper with answer keys) in `backend/app/api/v1/interviews.py`
-- [X] T016 [US3] Implement L1 feedback submission endpoint (`PASS` $\implies$ `L2_ELIGIBLE`, `REJECT` $\implies$ `L1_REJECTED`) in `backend/app/api/v1/interviews.py`
-- [X] T017 [P] [US3] Build L1 Interviewer Pool Dashboard with Claim / Release buttons in `frontend/src/app/(interviewer)/l1/page.tsx`
-- [X] T018 [P] [US3] Build L1 Candidate Evaluation Dossier with test paper review and feedback form in `frontend/src/app/(interviewer)/l1/[id]/dossier/page.tsx`
+## Phase 3: Single-Attempt Lock, Live Geolocation & Recruiter Unlock
+- [ ] T008 Implement strict single-attempt lock check on test registration and logger for live GPS geolocation coordinates in `backend/app/api/v1/public.py`
+- [ ] T009 Implement Recruiter "Reactivate Candidate Attempt" endpoint in `backend/app/api/v1/drives.py`
+- [ ] T010 Update Candidate 360 Tracking Drawer to display live GPS map coordinates and add the "Reactivate Candidate Attempt" button in `frontend/src/app/(recruiter)/drives/[id]/pipeline/page.tsx`
 
 ---
 
-## Phase 5: User Story 4 — L2 Advanced/Panel Interviewer Pool & Evaluation (P1) 🎯
-- [X] T019 [US4] Implement L2 candidate pool listing, claim lock, and release endpoints in `backend/app/api/v1/interviews.py`
-- [X] T020 [US4] Implement L2 candidate dossier endpoint (profile + test paper + **L1 notes & rating**) in `backend/app/api/v1/interviews.py`
-- [X] T021 [US4] Implement L2 feedback submission endpoint (`PASS` $\implies$ `L2_CLEARED`, `REJECT` $\implies$ `L2_REJECTED`) in `backend/app/api/v1/interviews.py`
-- [X] T022 [P] [US4] Build L2 Interviewer Pool Dashboard with Claim / Release buttons in `frontend/src/app/(interviewer)/l2/page.tsx`
-- [X] T023 [P] [US4] Build L2 Candidate Evaluation Dossier displaying L1 notes and L2 rubric form in `frontend/src/app/(interviewer)/l2/[id]/dossier/page.tsx`
+## Phase 4: Manual & Bulk Interview Scheduling
+- [ ] T011 [P] Implement Manual Single Candidate and Bulk Batch Interview Scheduling endpoints in `backend/app/api/v1/interviews.py`
+- [ ] T012 Build Manual & Bulk Interview Scheduling Modal in `frontend/src/components/interviews/schedule-modal.tsx`
 
 ---
 
-## Phase 6: User Story 5 — Recruiter 360 Tracking & Candidate Dossier (P1) 🎯
-- [X] T024 [US5] Implement Recruiter Candidate Pipeline query endpoint with stage filters (`ALL`, `TEST_PENDING`, `L1_POOL`, `L2_POOL`, `SELECTED`, `REJECTED`) in `backend/app/api/v1/drives.py`
-- [X] T025 [US5] Implement Candidate 360 full audit trail endpoint in `backend/app/api/v1/drives.py`
-- [X] T026 [P] [US5] Build Recruiter Pipeline Tracking Board with real-time stage badges in `frontend/src/app/(recruiter)/drives/[id]/pipeline/page.tsx`
-- [X] T027 [P] [US5] Build Candidate 360 Slide-Over Drawer displaying complete score, proctoring flags, L1/L2 feedback, and rejection reasons in `frontend/src/app/(recruiter)/drives/[id]/pipeline/page.tsx`
+## Phase 5: Unified Dashboard Workspace (`/dashboard`)
+- [ ] T013 Implement System Health and Admin Role management endpoints in `backend/app/api/v1/organization.py`
+- [ ] T014 Build Consolidated Unified Dashboard (`/dashboard`) with dynamic tabs for Recruiter Drives & Pipeline, L1 Pool, L2 Pool, and Admin System Health in `frontend/src/app/(recruiter)/dashboard/page.tsx`
 
 ---
 
-## Phase 7: Polish, Verification & Seeding
-- [X] T028 Update demo seeding script with sample L1/L2 eligible candidates in `backend/scripts/seed_demo_data.py`
-- [X] T029 Write integration tests covering the full pipeline in `backend/tests/integration/test_streamlined_pipeline.py`
-- [X] T030 Update master change tracker in `CHANGELOG_TRACKER.md`
+## Phase 6: Polish & Verification
+- [ ] T015 Update seed script with sample Excel candidate roster and L1/L2 test attempts in `backend/scripts/seed_demo_data.py`
+- [ ] T016 Run automated tests and verify frontend production build
