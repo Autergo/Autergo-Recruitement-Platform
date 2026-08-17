@@ -25,14 +25,70 @@ export default function UnifiedDashboard() {
   const [l2Candidates, setL2Candidates] = useState<any[]>([]);
   const [loadingPool, setLoadingPool] = useState(false);
 
-  // Admin Health State
-  const [systemHealth, setSystemHealth] = useState({
-    database: 'CONNECTED',
-    server_status: 'HEALTHY',
-    active_drives: 0,
-    total_candidates: 0,
-    security_checks: 'PASSED (RBAC, Geolocation & Whitelist Enforced)',
-  });
+  // Admin Users & Create User Modal State
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [newFullName, setNewFullName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<'admin' | 'recruiter' | 'l1_interviewer' | 'l2_interviewer'>('recruiter');
+  const [creatingUser, setCreatingUser] = useState(false);
+
+  useEffect(() => {
+    if (activeRole === 'admin') fetchAdminUsers();
+  }, [activeRole]);
+
+  const fetchAdminUsers = async () => {
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch('http://localhost:8000/api/v1/organizations/users', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setAdminUsers(await res.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingUser(true);
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch('http://localhost:8000/api/v1/organizations/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          full_name: newFullName.trim(),
+          email: newEmail.trim().toLowerCase(),
+          password: newPassword,
+          role: newRole,
+        }),
+      });
+
+      if (res.ok) {
+        alert('User created successfully!');
+        setShowCreateUserModal(false);
+        setNewFullName('');
+        setNewEmail('');
+        setNewPassword('');
+        fetchAdminUsers();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to create user.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error connecting to server.');
+    } finally {
+      setCreatingUser(false);
+    }
+  };
 
   useEffect(() => {
     const rawUser = localStorage.getItem('autergo_user');
@@ -287,6 +343,50 @@ export default function UnifiedDashboard() {
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Security & Anti-Cheat</span>
                 <div className="text-lg font-bold text-emerald-400">● {systemHealth.security_checks}</div>
                 <p className="text-xs text-slate-500">Strict single-attempt test locks & HTML5 GPS capture verified.</p>
+              </div>
+            </div>
+
+            {/* Admin User Management */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-bold text-white">System User Role Allocations</h3>
+                  <p className="text-xs text-slate-400">Create and allocate accounts for Admins, Recruiters, and Interviewers.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateUserModal(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow transition-all"
+                >
+                  + Create New User
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-300">
+                  <thead className="bg-slate-950 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="px-4 py-3">Full Name</th>
+                      <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3">Assigned Role</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {adminUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-800/40">
+                        <td className="px-4 py-3 font-bold text-white">{u.full_name}</td>
+                        <td className="px-4 py-3 text-xs font-mono text-slate-400">{u.email}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-bold uppercase bg-slate-950 px-2.5 py-0.5 rounded-full border border-slate-800 text-blue-400">
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-emerald-400 font-bold">Active</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </section>
@@ -601,6 +701,87 @@ export default function UnifiedDashboard() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal (Admin) */}
+      {showCreateUserModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-bold text-white">Create New User Account</h3>
+              <button onClick={() => setShowCreateUserModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Full Legal Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sarah Jenkins"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="sarah@autergo.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Min 8 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">System Role *</label>
+                <select
+                  value={newRole}
+                  onChange={(e: any) => setNewRole(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                >
+                  <option value="recruiter">Recruiter (Campaign & Whitelist Manager)</option>
+                  <option value="admin">System Admin (Full Governance)</option>
+                  <option value="l1_interviewer">L1 Technical Interviewer</option>
+                  <option value="l2_interviewer">L2 Panel Interviewer</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateUserModal(false)}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingUser}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs disabled:opacity-50"
+                >
+                  {creatingUser ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

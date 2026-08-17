@@ -221,6 +221,18 @@ async def list_drive_candidates(
         cand_res = await db.execute(cand_stmt)
         cand = cand_res.scalar_one_or_none()
 
+        output.append({
+            "application_id": str(app.id),
+            "candidate_id": str(cand.id) if cand else None,
+            "full_name": cand.full_name if cand else "Candidate",
+            "email": cand.email if cand else "",
+            "phone": cand.phone if cand else "",
+            "status": app.status,
+            "profile_info": app.custom_field_values,
+            "applied_at": app.applied_at.isoformat() if app.applied_at else None,
+        })
+    return output
+
 @router.delete("/{drive_id}")
 async def delete_drive(
     drive_id: uuid.UUID,

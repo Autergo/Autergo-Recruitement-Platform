@@ -25,8 +25,34 @@ async def get_current_organization(
 @router.get("/users", response_model=List[UserResponse])
 async def list_organization_users(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager"]))
+    current_user: User = Depends(require_roles(["org_admin", "admin", "recruitment_manager"]))
 ):
     stmt = select(User).where(User.tenant_id == current_user.tenant_id)
     res = await db.execute(stmt)
     return res.scalars().all()
+
+from app.core.security import get_password_hash
+
+@router.post("/users", response_model=UserResponse)
+async def create_organization_user(
+    req: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "admin"]))
+):
+    stmt = select(User).where(User.email == req.email, User.tenant_id == current_user.tenant_id)
+    res = await db.execute(stmt)
+    if res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+
+    new_user = User(
+        tenant_id=current_user.tenant_id,
+        email=req.email.strip().lower(),
+        password_hash=get_password_hash(req.password),
+        full_name=req.full_name.strip(),
+        role=req.role,
+        is_active=True
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return new_user
