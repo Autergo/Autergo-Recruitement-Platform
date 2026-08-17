@@ -18,7 +18,7 @@ export default function L1InterviewerPoolPage() {
   const fetchL1Pool = async () => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('${API_BASE_URL}/interviews/l1/pool', {
+      const res = await fetch(`${API_BASE_URL}/interviews/l1/pool`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {

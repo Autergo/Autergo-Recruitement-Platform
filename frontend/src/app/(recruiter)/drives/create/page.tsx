@@ -71,7 +71,7 @@ export default function CreateDrivePage() {
 
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('${API_BASE_URL}/drives', {
+      const res = await fetch(`${API_BASE_URL}/drives`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

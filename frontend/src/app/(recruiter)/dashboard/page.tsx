@@ -71,7 +71,7 @@ export default function UnifiedDashboard() {
   const fetchCustomRoles = async () => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('${API_BASE_URL}/organizations/roles', {
+      const res = await fetch(`${API_BASE_URL}/organizations/roles`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -87,7 +87,7 @@ export default function UnifiedDashboard() {
     setCreatingRole(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('${API_BASE_URL}/organizations/roles', {
+      const res = await fetch(`${API_BASE_URL}/organizations/roles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export default function UnifiedDashboard() {
   const fetchAdminUsers = async () => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('${API_BASE_URL}/organizations/users', {
+      const res = await fetch(`${API_BASE_URL}/organizations/users`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -138,7 +138,7 @@ export default function UnifiedDashboard() {
     setCreatingUser(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('${API_BASE_URL}/organizations/users', {
+      const res = await fetch(`${API_BASE_URL}/organizations/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -235,7 +235,7 @@ export default function UnifiedDashboard() {
     setLoadingDrives(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('${API_BASE_URL}/drives', {
+      const res = await fetch(`${API_BASE_URL}/drives`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
