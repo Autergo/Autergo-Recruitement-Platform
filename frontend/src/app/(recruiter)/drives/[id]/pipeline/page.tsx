@@ -65,6 +65,56 @@ export default function DrivePipelineTrackingPage() {
     }
   };
 
+  const [showExcelModal, setShowExcelModal] = useState(false);
+  const [excelText, setExcelText] = useState(
+    'Name,Email,Phone,Experience\nRahul Verma,rahul@example.com,+91 9876543201,3\nSneha Kapoor,sneha@example.com,+91 9876543202,5\nAmit Roy,amit@example.com,+91 9876543203,2'
+  );
+  const [importingExcel, setImportingExcel] = useState(false);
+
+  const handleExcelImport = async () => {
+    setImportingExcel(true);
+    try {
+      const lines = excelText.trim().split('\n');
+      const candidatesList = [];
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',');
+        if (parts.length >= 2) {
+          candidatesList.push({
+            full_name: parts[0]?.trim() || 'Candidate',
+            email: parts[1]?.trim() || '',
+            phone: parts[2]?.trim() || '',
+            experience_years: Number(parts[3]?.trim()) || 0,
+            referral_source: 'Excel Import',
+          });
+        }
+      }
+
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch(`http://localhost:8000/api/v1/drives/${driveId}/import-whitelist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ candidates: candidatesList }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Success! Imported ${data.imported_candidates} whitelisted candidates for this drive.`);
+        setShowExcelModal(false);
+        fetchCandidates();
+      } else {
+        alert('Failed to import candidates.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error parsing or importing Excel file.');
+    } finally {
+      setImportingExcel(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       {/* Navbar */}
@@ -75,7 +125,7 @@ export default function DrivePipelineTrackingPage() {
           </Link>
           <nav className="flex gap-4 text-sm font-medium">
             <Link href="/dashboard" className="text-slate-400 hover:text-white transition-all">
-              &larr; Back to Drives
+              &larr; Back to Dashboard
             </Link>
           </nav>
         </div>
@@ -83,29 +133,38 @@ export default function DrivePipelineTrackingPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto w-full px-6 py-8 flex-1">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Candidate 360 Tracking Pipeline</h1>
+            <h1 className="text-2xl font-bold text-white">Drive Candidate Workspace & 360 Pipeline</h1>
             <p className="text-sm text-slate-400">
-              Real-time progression tracking across all assessment and interview stages.
+              Manage whitelisted candidates, review test scores, live GPS coordinates, and reactivate locked attempts.
             </p>
           </div>
 
-          {/* Stage Filters */}
-          <div className="flex gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-            {['ALL', 'L1_POOL', 'L2_POOL', 'SELECTED', 'REJECTED'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setFilterStage(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filterStage === st
-                    ? 'bg-emerald-600 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowExcelModal(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-all"
+            >
+              📊 Import Excel Whitelist
+            </button>
+
+            {/* Stage Filters */}
+            <div className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+              {['ALL', 'L1_POOL', 'L2_POOL', 'SELECTED', 'REJECTED'].map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setFilterStage(st)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    filterStage === st
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -303,6 +362,46 @@ export default function DrivePipelineTrackingPage() {
             >
               Close Drawer
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Excel / CSV Whitelist Upload Modal */}
+      {showExcelModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-bold text-white">Import Candidate Whitelist for this Drive</h3>
+              <button onClick={() => setShowExcelModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <p className="text-xs text-slate-400">
+              Paste or edit candidate rows (`Name,Email,Phone,Experience`). Only these whitelisted emails can take this assessment.
+            </p>
+
+            <textarea
+              rows={6}
+              value={excelText}
+              onChange={(e) => setExcelText(e.target.value)}
+              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-emerald-400 focus:outline-none focus:border-emerald-500"
+            />
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowExcelModal(false)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExcelImport}
+                disabled={importingExcel}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs disabled:opacity-50"
+              >
+                {importingExcel ? 'Importing...' : 'Upload & Whitelist Candidates'}
+              </button>
+            </div>
           </div>
         </div>
       )}

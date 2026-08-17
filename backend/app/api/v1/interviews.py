@@ -28,13 +28,18 @@ class EvaluationRequest(BaseModel):
 
 @router.get("/l1/pool")
 async def list_l1_candidate_pool(
+    drive_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles(["l1_interviewer", "recruiter", "org_admin", "admin"]))
 ):
-    stmt = select(Application).where(
+    query = select(Application).where(
         Application.tenant_id == current_user.tenant_id,
         Application.status.in_(["l1_eligible", "l1_in_progress"])
-    ).order_by(desc(Application.applied_at))
+    )
+    if drive_id:
+        query = query.where(Application.drive_id == drive_id)
+
+    stmt = query.order_by(desc(Application.applied_at))
     res = await db.execute(stmt)
     apps = res.scalars().all()
 
@@ -239,13 +244,18 @@ async def submit_l1_evaluation(
 
 @router.get("/l2/pool")
 async def list_l2_candidate_pool(
+    drive_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles(["l2_interviewer", "recruiter", "org_admin", "admin"]))
 ):
-    stmt = select(Application).where(
+    query = select(Application).where(
         Application.tenant_id == current_user.tenant_id,
         Application.status.in_(["l2_eligible", "l2_in_progress"])
-    ).order_by(desc(Application.applied_at))
+    )
+    if drive_id:
+        query = query.where(Application.drive_id == drive_id)
+
+    stmt = query.order_by(desc(Application.applied_at))
     res = await db.execute(stmt)
     apps = res.scalars().all()
 
