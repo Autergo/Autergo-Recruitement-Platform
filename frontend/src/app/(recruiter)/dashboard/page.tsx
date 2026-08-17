@@ -803,37 +803,44 @@ export default function UnifiedDashboard() {
               <button onClick={() => setSelectedShareDrive(null)} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <div className="flex justify-center mb-6 bg-white p-4 rounded-xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                  `http://localhost:3000/drive/${selectedShareDrive.id}/apply`
-                )}`}
-                alt="Drive QR Code"
-                className="w-48 h-48"
-              />
-            </div>
+            {/* Magic Link & QR Generator */}
+            {(() => {
+              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://autergo-recruitement-platform.vercel.app';
+              const applyUrl = `${origin}/drive/${selectedShareDrive.id}/apply`;
+              return (
+                <>
+                  <div className="flex justify-center mb-6 bg-white p-4 rounded-xl">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(applyUrl)}`}
+                      alt="Drive QR Code"
+                      className="w-48 h-48"
+                    />
+                  </div>
 
-            <div className="mb-4">
-              <label className="text-xs font-bold text-slate-400 mb-1 block">Magic Share Link</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={`http://localhost:3000/drive/${selectedShareDrive.id}/apply`}
-                  className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs font-mono text-emerald-400"
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`http://localhost:3000/drive/${selectedShareDrive.id}/apply`);
-                    alert('Magic link copied!');
-                  }}
-                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
+                  <div className="mb-4">
+                    <label className="text-xs font-bold text-slate-400 mb-1 block">Magic Share Link</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={applyUrl}
+                        className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-xs font-mono text-emerald-400"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(applyUrl);
+                          alert('Magic link copied!');
+                        }}
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
 
             <button
               onClick={() => setSelectedShareDrive(null)}
