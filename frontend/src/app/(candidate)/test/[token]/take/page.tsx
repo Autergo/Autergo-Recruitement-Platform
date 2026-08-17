@@ -110,13 +110,40 @@ export default function CandidateTakeAssessment() {
     }
   };
 
+  // Thank You / Terminal Termination Screen State
+  const [testFinished, setTestFinished] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (testFinished && countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (testFinished && countdown === 0) {
+      // Clear candidate session storage
+      localStorage.removeItem('candidate_session_token');
+      localStorage.removeItem('candidate_assessment_questions');
+      localStorage.removeItem('candidate_duration_minutes');
+      // Attempt window close / blank redirect
+      try {
+        window.close();
+      } catch (e) {
+        console.error(e);
+      }
+      // If browser prevents window.close, redirect to about:blank or terminating blank page
+      window.location.href = 'about:blank';
+    }
+    return () => clearTimeout(timer);
+  }, [testFinished, countdown]);
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const token = localStorage.getItem('candidate_session_token');
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      const res = await fetch('http://localhost:8000/api/v1/public/assessment/submit', {
+      await fetch('http://localhost:8000/api/v1/public/assessment/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,22 +159,65 @@ export default function CandidateTakeAssessment() {
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        alert(`Test Submitted Successfully!\nYour Score: ${data.score}/${data.total} (${data.percentage.toFixed(1)}%)`);
-        router.push('/');
-      } else {
-        alert('Test submitted.');
-        router.push('/');
+      // Clear local session credentials immediately
+      localStorage.removeItem('candidate_session_token');
+      localStorage.removeItem('candidate_assessment_questions');
+      localStorage.removeItem('candidate_duration_minutes');
+
+      // Exit fullscreen if active
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
       }
+
+      setTestFinished(true);
     } catch (err) {
       console.error(err);
-      alert('Test recorded.');
-      router.push('/');
+      setTestFinished(true);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (testFinished) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
+          <div className="w-16 h-16 bg-emerald-950 border border-emerald-800 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto">
+            ✓
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-white">Assessment Submitted</h1>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              Thank you for completing the technical assessment. Your responses, proctoring telemetry, and timestamps have been securely recorded.
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-2">
+            <div className="text-[11px] font-bold text-rose-400 uppercase tracking-widest">
+              🔒 Session Terminated
+            </div>
+            <div className="text-3xl font-mono font-extrabold text-white">
+              {countdown}s
+            </div>
+            <p className="text-[11px] text-slate-500">
+              This terminal session is locked. Closing window in {countdown} seconds...
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              window.close();
+              window.location.href = 'about:blank';
+            }}
+            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 transition-all"
+          >
+            Close Window Now
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const currentQ = questions[currentIdx] || questions[0];
   const minutes = Math.floor(timeLeft / 60);

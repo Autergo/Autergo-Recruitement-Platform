@@ -145,12 +145,17 @@ export default function UnifiedDashboard() {
             <div className="text-xs font-bold text-white">{currentUser?.full_name || 'System User'}</div>
             <div className="text-[10px] text-slate-400 font-mono capitalize">Active Role: {activeRole}</div>
           </div>
-          <Link
-            href="/login"
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700"
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('autergo_token');
+              localStorage.removeItem('autergo_user');
+              router.push('/login');
+            }}
+            className="px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold rounded-lg transition-all"
           >
-            Switch User
-          </Link>
+            Logout
+          </button>
         </div>
       </header>
 

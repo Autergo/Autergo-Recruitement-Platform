@@ -41,17 +41,10 @@ async def check_candidate_whitelist(
     cand = cand_res.scalar_one_or_none()
 
     if not cand:
-        # Check if drive has an open registration or strict whitelist
-        # If applications exist for drive, enforce whitelist
-        count_stmt = select(Application).where(Application.drive_id == drive.id)
-        count_res = await db.execute(count_stmt)
-        total_apps = count_res.scalars().all()
-        if len(total_apps) > 0:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Your email is not in the authorized candidate whitelist for this recruitment drive. Please contact your recruiter."
-            )
-        return {"whitelisted": True, "prefill": {"email": cand_email, "full_name": "", "phone": "", "experience_years": 0}}
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your email is not authorized for this recruitment drive. Please contact your recruiter to be added to the whitelist."
+        )
 
     app_stmt = select(Application).where(Application.drive_id == drive.id, Application.candidate_id == cand.id)
     app_res = await db.execute(app_stmt)
@@ -126,25 +119,36 @@ async def register_candidate(
     if not drive:
         raise HTTPException(status_code=404, detail="Drive not found")
 
-    # Find or create candidate
-    cand_stmt = select(Candidate).where(Candidate.email == req.email, Candidate.tenant_id == drive.tenant_id)
+    cand_email = req.email.strip().lower()
+
+    # Strict Whitelist Check in DB
+    cand_stmt = select(Candidate).where(Candidate.email == cand_email, Candidate.tenant_id == drive.tenant_id)
     cand_res = await db.execute(cand_stmt)
     candidate = cand_res.scalar_one_or_none()
 
     if not candidate:
-        candidate = Candidate(
-            tenant_id=drive.tenant_id,
-            email=req.email,
-            full_name=req.full_name,
-            phone=req.phone
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your email is not whitelisted for this drive. Access denied."
         )
-        db.add(candidate)
-        await db.flush()
 
     # Check if application already exists
     app_stmt = select(Application).where(Application.drive_id == drive.id, Application.candidate_id == candidate.id)
     app_res = await db.execute(app_stmt)
     app = app_res.scalar_one_or_none()
+
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your email is not whitelisted for this drive. Access denied."
+        )
+
+    meta = dict(app.custom_field_values or {})
+    if app.status in ["test_in_progress", "submitted", "l1_eligible", "l1_in_progress", "l1_rejected", "l2_eligible", "l2_in_progress", "l2_rejected", "selected", "test_rejected"] and meta.get("attempt_locked", True):
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Assessment attempt already used. Contact recruiter to reactivate."
+        )
 
     profile_data = {
         "full_name": req.full_name,
