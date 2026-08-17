@@ -802,6 +802,7 @@ export default function UnifiedDashboard() {
             </div>
 
             <div className="flex justify-center mb-6 bg-white p-4 rounded-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
                   `http://localhost:3000/drive/${selectedShareDrive.id}/apply`
