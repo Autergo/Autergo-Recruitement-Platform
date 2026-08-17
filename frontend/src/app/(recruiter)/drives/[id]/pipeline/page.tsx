@@ -1,21 +1,83 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function DrivePipelineTrackingPage() {
   const params = useParams();
+  const router = useRouter();
   const driveId = params.id as string;
 
   const [candidates, setCandidates] = useState<any[]>([]);
+  const [driveInfo, setDriveInfo] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterStage, setFilterStage] = useState('ALL');
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [editingCutoff, setEditingCutoff] = useState(false);
+  const [newCutoff, setNewCutoff] = useState<number>(60);
+  const [updatingCutoff, setUpdatingCutoff] = useState(false);
 
   useEffect(() => {
+    fetchDriveDetails();
     fetchCandidates();
+
+    // Real-time 4-second live polling interval
+    const interval = setInterval(() => {
+      fetchDriveDetails();
+      fetchCandidates();
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, [driveId, filterStage]);
+
+  const fetchDriveDetails = async () => {
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch(`http://localhost:8000/api/v1/drives/${driveId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDriveInfo(data);
+        if (!editingCutoff) setNewCutoff(data.cutoff_percentage || 60);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateCutoff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdatingCutoff(true);
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch(`http://localhost:8000/api/v1/drives/${driveId}/cutoff`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ cutoff_percentage: Number(newCutoff) }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Cutoff updated to ${newCutoff}%. Recalculated ${data.recalculated_candidates} candidate(s).`);
+        setEditingCutoff(false);
+        fetchDriveDetails();
+        fetchCandidates();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to update cutoff percentage.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating cutoff percentage.');
+    } finally {
+      setUpdatingCutoff(false);
+    }
+  };
 
   const fetchCandidates = async () => {
     try {
@@ -115,6 +177,31 @@ export default function DrivePipelineTrackingPage() {
     }
   };
 
+  const handleDeleteDrive = async () => {
+    if (!confirm('Are you sure you want to permanently delete this recruitment drive? This will remove all associated assessments, applications, and test attempts.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch(`http://localhost:8000/api/v1/drives/${driveId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (res.ok) {
+        alert('Recruitment drive successfully deleted.');
+        router.push('/dashboard');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to delete recruitment drive.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error deleting recruitment drive.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       {/* Navbar */}
@@ -135,36 +222,86 @@ export default function DrivePipelineTrackingPage() {
       <main className="max-w-7xl mx-auto w-full px-6 py-8 flex-1">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Drive Candidate Workspace & 360 Pipeline</h1>
-            <p className="text-sm text-slate-400">
-              Manage whitelisted candidates, review test scores, live GPS coordinates, and reactivate locked attempts.
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-white">
+                {driveInfo?.title ? `${driveInfo.title} — 360 Pipeline` : 'Drive Candidate Workspace & 360 Pipeline'}
+              </h1>
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-0.5 rounded-full animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Live Scoring Active
+              </span>
+            </div>
+            <p className="text-sm text-slate-400 mt-1">
+              Manage whitelisted candidates, review test scores, monitor proctoring violations & live GPS telemetry.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setEditingCutoff(true)}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold rounded-xl shadow transition-all flex items-center gap-1.5"
+            >
+              <span>⚙️</span> Cutoff: <strong className="text-emerald-400">{driveInfo?.cutoff_percentage || 60}%</strong> (Edit)
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteDrive}
+              className="px-3.5 py-2 bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 hover:text-white text-xs font-bold rounded-xl shadow transition-all flex items-center gap-1.5"
+            >
+              <span>🗑️</span> Delete Drive
+            </button>
             <button
               onClick={() => setShowExcelModal(true)}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-all"
             >
               📊 Import Excel Whitelist
             </button>
+          </div>
+        </div>
 
-            {/* Stage Filters */}
-            <div className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-              {['ALL', 'L1_POOL', 'L2_POOL', 'SELECTED', 'REJECTED'].map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setFilterStage(st)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    filterStage === st
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
-            </div>
+        {/* Live Counters Banner */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
+            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Candidates</div>
+            <div className="text-2xl font-extrabold text-white mt-1">{driveInfo?.total_candidates ?? candidates.length}</div>
+          </div>
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
+            <div className="text-xs text-amber-400 font-bold uppercase tracking-wider">L1 Eligible Pool</div>
+            <div className="text-2xl font-extrabold text-amber-400 mt-1">{driveInfo?.l1_pool_count ?? 0}</div>
+          </div>
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
+            <div className="text-xs text-purple-400 font-bold uppercase tracking-wider">L2 Review Pool</div>
+            <div className="text-2xl font-extrabold text-purple-400 mt-1">{driveInfo?.l2_pool_count ?? 0}</div>
+          </div>
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
+            <div className="text-xs text-emerald-400 font-bold uppercase tracking-wider">Selected / Hired</div>
+            <div className="text-2xl font-extrabold text-emerald-400 mt-1">{driveInfo?.selected_count ?? 0}</div>
+          </div>
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl">
+            <div className="text-xs text-rose-400 font-bold uppercase tracking-wider">Rejected (&lt; Cutoff)</div>
+            <div className="text-2xl font-extrabold text-rose-400 mt-1">{driveInfo?.rejected_count ?? 0}</div>
+          </div>
+        </div>
+
+        {/* Stage Filter Tabs */}
+        <div className="flex justify-between items-center mb-4">
+          <div className="text-xs text-slate-400 font-medium">
+            Filtering by stage: <strong className="text-white">{filterStage}</strong>
+          </div>
+          <div className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+            {['ALL', 'L1_POOL', 'L2_POOL', 'SELECTED', 'REJECTED'].map((st) => (
+              <button
+                key={st}
+                onClick={() => setFilterStage(st)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filterStage === st
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {st}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -184,12 +321,14 @@ export default function DrivePipelineTrackingPage() {
                   <th className="px-6 py-4">Referral</th>
                   <th className="px-6 py-4">Current Stage & Status</th>
                   <th className="px-6 py-4">Test Score</th>
+                  <th className="px-6 py-4">Proctoring Telemetry</th>
                   <th className="px-6 py-4 text-right">360 Audit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {candidates.map((c) => {
                   const meta = c.profile_info || {};
+                  const violations = c.proctoring_violations_count || meta.proctoring_flags?.tab_switches || 0;
                   return (
                     <tr key={c.application_id} className="hover:bg-slate-800/40 transition-all">
                       <td className="px-6 py-4">
@@ -201,6 +340,17 @@ export default function DrivePipelineTrackingPage() {
                       <td className="px-6 py-4">{getStatusBadge(c.status)}</td>
                       <td className="px-6 py-4 font-mono font-bold text-emerald-400">
                         {meta.test_percentage !== undefined ? `${Number(meta.test_percentage).toFixed(1)}%` : '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        {violations > 0 ? (
+                          <span className="inline-flex items-center gap-1 bg-rose-950/80 border border-rose-800 text-rose-400 text-xs font-bold px-2.5 py-1 rounded-full font-mono">
+                            ⚠️ {violations} Tab Switch(es)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-emerald-950/60 border border-emerald-800 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-full">
+                            ✓ Clean Integrity
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button
@@ -266,6 +416,32 @@ export default function DrivePipelineTrackingPage() {
                 <span>Device Telemetry:</span>
                 <span className="capitalize">{selectedCandidate.profile_info?.device_type || 'Laptop'}</span>
               </div>
+              {/* Proctoring Violations Telemetry */}
+              <div className="pt-2 border-t border-slate-900 space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400">Proctoring Violations:</span>
+                  {(selectedCandidate.proctoring_violations_count || selectedCandidate.profile_info?.proctoring_flags?.tab_switches || 0) > 0 ? (
+                    <span className="text-rose-400 font-bold font-mono">
+                      ⚠️ {selectedCandidate.proctoring_violations_count || selectedCandidate.profile_info?.proctoring_flags?.tab_switches} Tab Switch Incident(s)
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 font-bold">✓ 0 Incidents (Clean Integrity)</span>
+                  )}
+                </div>
+
+                {selectedCandidate.proctoring_violations && selectedCandidate.proctoring_violations.length > 0 && (
+                  <div className="bg-slate-900 p-2.5 rounded-lg space-y-1 border border-slate-800 text-[11px] font-mono text-slate-300">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Violation Incident Log</span>
+                    {selectedCandidate.proctoring_violations.map((v: any, idx: number) => (
+                      <div key={idx} className="flex justify-between text-rose-300">
+                        <span>#{idx + 1} {v.event_type}</span>
+                        <span className="text-slate-500">{v.created_at ? new Date(v.created_at).toLocaleTimeString() : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {selectedCandidate.profile_info?.geolocation && (
                 <div className="pt-2 text-xs font-mono text-slate-400 border-t border-slate-900 flex justify-between items-center">
                   <span>📍 GPS Telemetry:</span>
@@ -402,6 +578,77 @@ export default function DrivePipelineTrackingPage() {
                 {importingExcel ? 'Importing...' : 'Upload & Whitelist Candidates'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Cutoff Modal */}
+      {editingCutoff && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-base font-bold text-white">Adjust Passing Cutoff Percentage</h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">{driveInfo?.title}</p>
+              </div>
+              <button onClick={() => setEditingCutoff(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              💡 Updating the cutoff will <strong>instantly re-evaluate all candidate scores</strong> for this drive. Candidates scoring &ge; new cutoff move into the <strong>L1 Eligible Pool</strong>; below cutoff will move into <strong>Test Rejected</strong>.
+            </p>
+
+            <form onSubmit={handleUpdateCutoff} className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-slate-300">Passing Cutoff Percentage *</label>
+                  <span className="text-sm font-extrabold text-emerald-400 font-mono">{newCutoff}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={newCutoff}
+                  onChange={(e) => setNewCutoff(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                  <span>0% (Pass All)</span>
+                  <span>50%</span>
+                  <span>100% (Strict)</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Or Enter Exact Value (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newCutoff}
+                  onChange={(e) => setNewCutoff(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-emerald-400"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCutoff(false)}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingCutoff}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs disabled:opacity-50 shadow-lg"
+                >
+                  {updatingCutoff ? 'Applying & Re-scoring...' : 'Save & Re-evaluate'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

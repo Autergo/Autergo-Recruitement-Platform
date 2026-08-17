@@ -184,7 +184,50 @@ export default function UnifiedDashboard() {
       }
     }
     fetchDrives();
+
+    // Live 5-second polling interval for real-time scores and candidate status updates
+    const pollInterval = setInterval(() => {
+      fetchDrives();
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
   }, []);
+
+  const [editingCutoffDrive, setEditingCutoffDrive] = useState<any | null>(null);
+  const [newCutoffVal, setNewCutoffVal] = useState<number>(60);
+  const [updatingCutoff, setUpdatingCutoff] = useState(false);
+
+  const handleUpdateCutoff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCutoffDrive) return;
+    setUpdatingCutoff(true);
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch(`http://localhost:8000/api/v1/drives/${editingCutoffDrive.id}/cutoff`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ cutoff_percentage: Number(newCutoffVal) }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Cutoff updated to ${newCutoffVal}%. Recalculated ${data.recalculated_candidates} candidate(s).`);
+        setEditingCutoffDrive(null);
+        fetchDrives();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to update cutoff percentage.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating cutoff percentage.');
+    } finally {
+      setUpdatingCutoff(false);
+    }
+  };
 
   const fetchDrives = async () => {
     setLoadingDrives(true);
@@ -211,6 +254,31 @@ export default function UnifiedDashboard() {
       console.error(err);
     } finally {
       setLoadingDrives(false);
+    }
+  };
+
+  const handleDeleteDrive = async (driveId: string, driveTitle: string) => {
+    if (!confirm(`Are you sure you want to permanently delete the recruitment drive "${driveTitle}"? This will remove all associated assessments, applications, and test attempts.`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch(`http://localhost:8000/api/v1/drives/${driveId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (res.ok) {
+        setDrives((prev) => prev.filter((d) => d.id !== driveId));
+        fetchDrives();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to delete recruitment drive.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error deleting recruitment drive.');
     }
   };
 
@@ -482,9 +550,22 @@ export default function UnifiedDashboard() {
                         <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-950 border border-emerald-800 text-emerald-400 px-2.5 py-0.5 rounded-full">
                           {d.status}
                         </span>
-                        <span className="text-xs font-mono text-slate-400">
-                          Cutoff: {d.cutoff_percentage}%
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-mono text-slate-400">
+                            Cutoff: <strong className="text-emerald-400">{d.cutoff_percentage}%</strong>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCutoffDrive(d);
+                              setNewCutoffVal(d.cutoff_percentage || 60);
+                            }}
+                            title="Manage / Update Cutoff Percentage"
+                            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded border border-slate-700 hover:text-white transition-all"
+                          >
+                            ✏️ Edit
+                          </button>
+                        </div>
                       </div>
                       <h2 className="text-lg font-bold text-white mb-1">{d.title}</h2>
                       <p className="text-xs text-slate-400 mb-4">{d.job_title}</p>
@@ -516,12 +597,22 @@ export default function UnifiedDashboard() {
                       >
                         🔗 Share Magic Link & QR Code
                       </button>
-                      <Link
-                        href={`/drives/${d.id}/pipeline`}
-                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg text-center transition-all block shadow"
-                      >
-                        Enter Drive Candidate Workspace &rarr;
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/drives/${d.id}/pipeline`}
+                          className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg text-center transition-all block shadow"
+                        >
+                          Enter Drive Workspace &rarr;
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDrive(d.id, d.title)}
+                          title="Delete Recruitment Drive"
+                          className="px-3 py-2.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 text-rose-300 hover:text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -893,6 +984,77 @@ export default function UnifiedDashboard() {
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs disabled:opacity-50"
                 >
                   {creatingRole ? 'Creating...' : 'Save Custom Role'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Cutoff Modal */}
+      {editingCutoffDrive && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-base font-bold text-white">Adjust Drive Cutoff Percentage</h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">{editingCutoffDrive.title}</p>
+              </div>
+              <button onClick={() => setEditingCutoffDrive(null)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              💡 Updating the cutoff will <strong>automatically re-evaluate</strong> all existing candidate scores for this drive. Candidates scoring &ge; new cutoff will immediately move to the <strong>L1 Eligible Pool</strong>; below cutoff will move to <strong>Test Rejected</strong>.
+            </p>
+
+            <form onSubmit={handleUpdateCutoff} className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-slate-300">Passing Cutoff Percentage *</label>
+                  <span className="text-sm font-extrabold text-emerald-400 font-mono">{newCutoffVal}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={newCutoffVal}
+                  onChange={(e) => setNewCutoffVal(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                  <span>0% (Pass All)</span>
+                  <span>50%</span>
+                  <span>100% (Strict)</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Or Enter Exact Value (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newCutoffVal}
+                  onChange={(e) => setNewCutoffVal(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-emerald-400"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCutoffDrive(null)}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingCutoff}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs disabled:opacity-50 shadow-lg"
+                >
+                  {updatingCutoff ? 'Applying & Re-scoring...' : 'Save & Re-evaluate'}
                 </button>
               </div>
             </form>

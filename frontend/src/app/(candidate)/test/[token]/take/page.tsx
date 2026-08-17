@@ -15,6 +15,8 @@ export default function CandidateTakeAssessment() {
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [showWarningToast, setShowWarningToast] = useState(false);
   const [warningMsg, setWarningMsg] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFocusModal, setShowFocusModal] = useState(false);
 
   useEffect(() => {
     // Load stored questions
@@ -45,6 +47,9 @@ export default function CandidateTakeAssessment() {
       ]);
     }
 
+    const dur = localStorage.getItem('candidate_duration_minutes');
+    if (dur) setTimeLeft(Number(dur) * 60);
+
     // Timer countdown
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -57,33 +62,78 @@ export default function CandidateTakeAssessment() {
       });
     }, 1000);
 
+    // Attempt entering fullscreen immediately on load
+    enterFullscreen();
+
+    // Check fullscreen state changes
+    const handleFullscreenChange = () => {
+      const isFs = !!document.fullscreenElement;
+      setIsFullscreen(isFs);
+      if (!isFs) {
+        logTelemetryViolation('FULLSCREEN_EXIT');
+        setShowFocusModal(true);
+      } else {
+        setShowFocusModal(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
     // Proctoring: Detect Tab Switches & Focus Loss (Laptop & Mobile Web)
     const handleVisibilityChange = () => {
       if (document.hidden) {
         logTelemetryViolation('TAB_SWITCH_OR_MINIMIZED');
+        setShowFocusModal(true);
       }
     };
 
     const handleWindowBlur = () => {
       logTelemetryViolation('WINDOW_FOCUS_LOST');
+      setShowFocusModal(true);
+    };
+
+    const handleWindowFocus = () => {
+      // Prompt candidate to resume fullscreen
+      if (!document.fullscreenElement) {
+        setShowFocusModal(true);
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
 
     return () => {
-      clearInterval(timer);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
     };
   }, []);
+
+  const enterFullscreen = async () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if ((elem as any).webkitRequestFullscreen) {
+        await (elem as any).webkitRequestFullscreen();
+      }
+      setIsFullscreen(true);
+      setShowFocusModal(false);
+    } catch (err) {
+      console.warn('Fullscreen request blocked by browser policy:', err);
+    }
+  };
 
   const logTelemetryViolation = (eventType: string) => {
     setTabSwitchCount((prev) => {
       const updated = prev + 1;
-      setWarningMsg(`⚠️ Proctoring Warning: Window focus lost / tab switched! (Incident #${updated})`);
+      setWarningMsg(`⚠️ Integrity Alert: Violation #${updated} recorded (${eventType.replace(/_/g, ' ')}). Recruiter has been notified.`);
       setShowWarningToast(true);
-      setTimeout(() => setShowWarningToast(false), 4000);
+      setTimeout(() => setShowWarningToast(false), 5000);
       return updated;
     });
 
@@ -353,6 +403,35 @@ export default function CandidateTakeAssessment() {
           )}
         </div>
       </main>
+
+      {/* Focus & Fullscreen Enforcement Overlay */}
+      {showFocusModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-6 text-center">
+          <div className="max-w-md w-full bg-slate-900 border border-rose-800/80 rounded-3xl p-8 shadow-2xl space-y-6 animate-pulse">
+            <div className="w-16 h-16 bg-rose-950 border border-rose-800 text-rose-400 rounded-full flex items-center justify-center text-3xl mx-auto">
+              ⚠️
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-white">Full-Screen Focus Required</h2>
+              <p className="text-xs text-rose-300 mt-2 leading-relaxed">
+                Tab switching, minimizing the browser, or exiting full-screen mode violates assessment integrity and is reported immediately to the recruiter.
+              </p>
+            </div>
+
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-400">
+              Violations Logged: <strong className="text-rose-400">{tabSwitchCount}</strong>
+            </div>
+
+            <button
+              type="button"
+              onClick={enterFullscreen}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xl transition-all"
+            >
+              Resume Assessment in Full-Screen &rarr;
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

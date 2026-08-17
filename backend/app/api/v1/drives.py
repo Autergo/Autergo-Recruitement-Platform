@@ -11,6 +11,8 @@ from app.models.organization import User
 from app.models.drive import RecruitmentDrive, DriveStage
 from app.models.assessment import Assessment
 from app.models.candidate import Candidate, Application
+from app.models.attempt import AssessmentAttempt
+from app.models.proctoring import ProctorSession, ProctorEvent
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/drives", tags=["Recruitment Drives"])
@@ -201,6 +203,37 @@ async def get_drive_share_info(
         "qr_code_url": f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=http://localhost:3000/drive/{drive.id}/apply"
     }
 
+@router.get("/{drive_id}")
+async def get_drive(
+    drive_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager", "recruiter", "admin"]))
+):
+    stmt = select(RecruitmentDrive).where(RecruitmentDrive.id == drive_id, RecruitmentDrive.tenant_id == current_user.tenant_id)
+    res = await db.execute(stmt)
+    drive = res.scalar_one_or_none()
+    if not drive:
+        raise HTTPException(status_code=404, detail="Drive not found")
+
+    app_stmt = select(Application).where(Application.drive_id == drive.id)
+    app_res = await db.execute(app_stmt)
+    apps = app_res.scalars().all()
+
+    return {
+        "id": str(drive.id),
+        "title": drive.title,
+        "job_title": drive.job_title,
+        "job_description": drive.job_description,
+        "status": drive.status,
+        "cutoff_percentage": drive.eligibility_rules.get("cutoff_percentage", 60.0),
+        "send_rejection_emails": drive.eligibility_rules.get("send_rejection_emails", False),
+        "total_candidates": len(apps),
+        "l1_pool_count": len([a for a in apps if a.status in ["l1_eligible", "l1_in_progress"]]),
+        "l2_pool_count": len([a for a in apps if a.status in ["l2_eligible", "l2_in_progress"]]),
+        "selected_count": len([a for a in apps if a.status in ["selected", "l2_cleared"]]),
+        "rejected_count": len([a for a in apps if a.status in ["test_rejected", "l1_rejected", "l2_rejected"]]),
+    }
+
 @router.get("/{drive_id}/candidates")
 async def list_drive_candidates(
     drive_id: uuid.UUID,
@@ -229,6 +262,31 @@ async def list_drive_candidates(
         cand_res = await db.execute(cand_stmt)
         cand = cand_res.scalar_one_or_none()
 
+        # Retrieve proctoring telemetry details
+        proc_events_count = 0
+        att_stmt = select(AssessmentAttempt).where(AssessmentAttempt.application_id == app.id)
+        att_res = await db.execute(att_stmt)
+        attempt = att_res.scalar_one_or_none()
+        
+        proc_events_list = []
+        if attempt:
+            proc_stmt = select(ProctorSession).where(ProctorSession.attempt_id == attempt.id)
+            proc_res = await db.execute(proc_stmt)
+            proc_session = proc_res.scalar_one_or_none()
+            if proc_session:
+                events_stmt = select(ProctorEvent).where(ProctorEvent.session_id == proc_session.id)
+                events_res = await db.execute(events_stmt)
+                events = events_res.scalars().all()
+                proc_events_count = len(events)
+                proc_events_list = [
+                    {
+                        "event_type": ev.event_type,
+                        "created_at": ev.timestamp.isoformat() if ev.timestamp else None,
+                        "metadata": ev.event_metadata
+                    }
+                    for ev in events
+                ]
+
         output.append({
             "application_id": str(app.id),
             "candidate_id": str(cand.id) if cand else None,
@@ -238,6 +296,8 @@ async def list_drive_candidates(
             "status": app.status,
             "profile_info": app.custom_field_values,
             "applied_at": app.applied_at.isoformat() if app.applied_at else None,
+            "proctoring_violations_count": proc_events_count,
+            "proctoring_violations": proc_events_list
         })
     return output
 
@@ -256,6 +316,60 @@ async def delete_drive(
     await db.delete(drive)
     await db.commit()
     return {"status": "deleted", "drive_id": str(drive_id)}
+
+class UpdateCutoffRequest(BaseModel):
+    cutoff_percentage: float
+
+@router.patch("/{drive_id}/cutoff")
+async def update_drive_cutoff(
+    drive_id: uuid.UUID,
+    req: UpdateCutoffRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager", "recruiter", "admin"]))
+):
+    stmt = select(RecruitmentDrive).where(RecruitmentDrive.id == drive_id, RecruitmentDrive.tenant_id == current_user.tenant_id)
+    res = await db.execute(stmt)
+    drive = res.scalar_one_or_none()
+    if not drive:
+        raise HTTPException(status_code=404, detail="Drive not found")
+
+    new_cutoff = float(req.cutoff_percentage)
+    current_rules = dict(drive.eligibility_rules or {})
+    current_rules["cutoff_percentage"] = new_cutoff
+    drive.eligibility_rules = current_rules
+
+    # Recalculate candidates eligibility for this drive who have already taken the test
+    apps_stmt = select(Application).where(Application.drive_id == drive_id)
+    apps_res = await db.execute(apps_stmt)
+    apps = apps_res.scalars().all()
+
+    updated_candidates = 0
+    for app in apps:
+        meta = dict(app.custom_field_values or {})
+        test_percentage = meta.get("test_percentage")
+        if test_percentage is not None:
+            # Only re-route candidates whose stages are test-evaluated (test_rejected or l1_eligible)
+            if app.status in ["test_rejected", "l1_eligible"]:
+                if float(test_percentage) >= new_cutoff:
+                    app.status = "l1_eligible"
+                    meta.pop("rejection_stage", None)
+                    meta.pop("rejection_reason", None)
+                else:
+                    app.status = "test_rejected"
+                    meta["rejection_stage"] = "Online Test"
+                    meta["rejection_reason"] = f"Scored {float(test_percentage):.1f}% (Required cutoff: {new_cutoff:.1f}%)"
+                app.custom_field_values = meta
+                updated_candidates += 1
+
+    await db.commit()
+    await db.refresh(drive)
+
+    return {
+        "status": "updated",
+        "drive_id": str(drive.id),
+        "cutoff_percentage": new_cutoff,
+        "recalculated_candidates": updated_candidates
+    }
 
 class CandidateImportItem(BaseModel):
     full_name: str

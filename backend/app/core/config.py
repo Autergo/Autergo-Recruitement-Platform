@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # Database Configuration (PostgreSQL by default with SQLite local fallback)
     USE_SQLITE: bool = True
     SQLITE_DB_FILE: str = "autergo_local.db"
+    DATABASE_URL: Optional[str] = None
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "autergo"
@@ -20,12 +21,25 @@ class Settings(BaseSettings):
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            # Handle Render/Heroku postgres:// or postgresql:// scheme for asyncpg
+            url = self.DATABASE_URL.strip()
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return url
         if self.USE_SQLITE:
             return f"sqlite+aiosqlite:///{self.SQLITE_DB_FILE}"
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     @property
     def SYNC_DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            url = self.DATABASE_URL.strip()
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql://", 1)
+            return url
         if self.USE_SQLITE:
             return f"sqlite:///{self.SQLITE_DB_FILE}"
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

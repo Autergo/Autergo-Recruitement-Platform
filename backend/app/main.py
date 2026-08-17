@@ -58,6 +58,28 @@ async def live_drive_websocket(websocket: WebSocket, drive_id: str):
     except WebSocketDisconnect:
         ws_manager.disconnect(drive_id, websocket)
 
+@app.get("/")
 @app.get("/health")
+@app.get("/api/v1/health")
 async def health_check():
-    return {"status": "healthy", "service": "Autergo Platform API"}
+    """
+    Dedicated UptimeRobot / Ping health check endpoint.
+    Keeps the free instance alive (e.g. Render, Railway, Fly.io, Koyeb)
+    and verifies backend status.
+    """
+    from datetime import datetime
+    db_connected = False
+    try:
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+            db_connected = True
+    except Exception:
+        db_connected = False
+
+    return {
+        "status": "healthy",
+        "service": "Autergo Enterprise Recruitment Platform API",
+        "database": "connected" if db_connected else "disconnected",
+        "timestamp": datetime.utcnow().isoformat()
+    }

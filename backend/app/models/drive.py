@@ -22,7 +22,7 @@ class RecruitmentDrive(Base):
 
     stages = relationship("DriveStage", back_populates="drive", cascade="all, delete-orphan", order_by="DriveStage.sequence_order")
     assessments = relationship("Assessment", back_populates="drive", cascade="all, delete-orphan")
-    applications = relationship("Application", back_populates="drive")
+    applications = relationship("Application", back_populates="drive", cascade="all, delete-orphan")
 
 class DriveStage(Base):
     __tablename__ = "drive_stages"

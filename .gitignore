@@ -56,10 +56,16 @@ Thumbs.db
 *.swp
 *.swo
 
-# Storage
+# Storage & Local DBs
 media/
 uploads/
 evidence_temp/
+*.db
+*.sqlite
+*.sqlite3
+autergo_local.db
+test-results/
+playwright-report/
 .autergo
 /.autergo
 /.specify
