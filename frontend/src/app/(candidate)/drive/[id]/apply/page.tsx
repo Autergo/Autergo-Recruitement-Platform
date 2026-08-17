@@ -13,10 +13,34 @@ export default function CandidateApplyPage() {
 
   // Step Management: 1: Email Check, 2: Confirm Info & Geolocation, 3: Proctoring Agreement
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [experienceYears, setExperienceYears] = useState(1);
+  const [referralSource, setReferralSource] = useState('Direct');
   const [checkingWhitelist, setCheckingWhitelist] = useState(false);
   const [whitelistError, setWhitelistError] = useState('');
   const [geoLocation, setGeoLocation] = useState<any | null>(null);
   const [geoStatus, setGeoStatus] = useState<'pending' | 'captured' | 'denied'>('pending');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchDriveDetails();
+  }, [driveId]);
+
+  const fetchDriveDetails = async () => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDrive(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
