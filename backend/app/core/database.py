@@ -3,7 +3,9 @@ from sqlalchemy.orm import DeclarativeBase
 from typing import AsyncGenerator
 from app.core.config import settings
 
-connect_args = {"check_same_thread": False} if settings.USE_SQLITE else {}
+# connect_args should ONLY be set for sqlite connections
+is_sqlite = "sqlite" in settings.SQLALCHEMY_DATABASE_URI
+connect_args = {"check_same_thread": False} if is_sqlite else {}
 
 engine = create_async_engine(
     settings.SQLALCHEMY_DATABASE_URI,
