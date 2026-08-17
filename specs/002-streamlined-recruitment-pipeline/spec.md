@@ -1,121 +1,118 @@
-# Feature Specification: Unified Dashboard RBAC Portal with Excel Whitelist, Geo-Location Anti-Cheat, Single-Attempt Lock & Bulk/Manual Interview Scheduling
+# Feature Specification: 4-Role Dashboard Switcher & Drive-Scoped Operations Architecture
 
 **Feature Directory**: `specs/002-streamlined-recruitment-pipeline/`  
 **Status**: Approved & Specified  
-**Version**: 2.2.0  
-**Domain**: Enterprise Recruitment & RBAC Workspace  
+**Version**: 2.3.0  
+**Domain**: Enterprise Recruitment, 4-Role RBAC & Drive-Scoped Lifecycle  
 
 ---
 
-## 1. Overview & Unified Dashboard Architecture
+## 1. Overview & 4-Role Dashboard Operating Model
 
-All internal users (**Admin, Recruiter, L1 Interviewer, L2 Interviewer**) access the system through a **single, unified dashboard portal (`/dashboard`)** with strict Role-Based Access Control (RBAC), fast name-based interviewer authentication, and manual/bulk scheduling capabilities:
+All internal platform capabilities are accessed via a **visible 4-Role Component Switcher** directly on the **Unified Dashboard (`/dashboard`)**. Clicking any of the 4 roles switches the view immediately into that role's dedicated, strictly-isolated workspace:
 
-- **Admin View**: User & role management, platform overview, system health check monitor, tenant data security. (Login: Email + Password).
-- **Recruiter View**: Create, manage, and delete recruitment drives; **import candidate whitelist from Excel / CSV files**; auto-fill candidate info on whitelisted email entry; **manual and bulk interview scheduling**; generate shareable Magic Link & QR Code; candidate 360 pipeline tracking; **exclusive authority to reactivate/unlock candidate test attempts**. (Login: Email + Password).
-- **L1 Technical Interviewer View**: **Direct Name-based Login**; view unassigned `L1_ELIGIBLE` candidate pool; voluntary claim/release; inspect candidate profile, live geolocation map coordinates, and submitted test paper with answer keys; submit Pass/Reject evaluation.
-- **L2 Panel Interviewer View**: **Direct Name-based Login**; view `L2_ELIGIBLE` candidate pool; voluntary claim/release; inspect candidate profile + test paper + **L1 interviewer ratings & feedback comments**; submit final hiring verdict.
-- **Candidate Assessment Flow**: Zero-account entry via **Drive Magic Link / QR Code**; email verified against drive's imported Excel whitelist; name/phone/experience **auto-filled from Excel**; **live geolocation captured** before test start; **single-attempt lock** enforced immediately upon entry (re-entry strictly blocked unless reactivated by recruiter).
+```mermaid
+flowchart TD
+    DASH[Unified Dashboard /dashboard] --> SWITCHER[4-Role Visible Switcher Component]
+
+    SWITCHER -->|1. Admin Role| VIEW_ADMIN[Admin Command Center: System Health, Tenant Roles & Data Security]
+    SWITCHER -->|2. Recruiter Role| VIEW_REC[Recruiter Drive Workspace: Drive Cards & Creation]
+    SWITCHER -->|3. L1 Interviewer Role| VIEW_L1_SELECT[L1 Drive Selector -> L1 Candidate Pool & Claim]
+    SWITCHER -->|4. L2 Interviewer Role| VIEW_L2_SELECT[L2 Drive Selector -> L2 Candidate Pool & L1 Notes Review]
+
+    VIEW_REC -->|Click Into Drive| DRIVE_WORKSPACE[Drive Management Hub: Candidate 360, Excel Whitelist & Reactivate Lock]
+    VIEW_L1_SELECT -->|Select Specific Drive| L1_POOL[L1 Isolated Candidate Pool: Claim, Test Paper, GPS Telemetry & Pass/Reject]
+    VIEW_L2_SELECT -->|Select Specific Drive| L2_POOL[L2 Isolated Candidate Pool: Claim, Test Paper, L1 Notes/Rating & Final Decision]
+```
 
 ---
 
-## 2. Actor Roles & Permissions Matrix
+## 2. The 4 Distinct Role Workspaces
 
-| Capability | Admin | Recruiter | L1 Interviewer | L2 Interviewer | Candidate |
+### 2.1 Role 1: Admin (`admin`)
+- **Dashboard View**: Dedicated Admin Workspace.
+- **Capabilities**:
+  - Full system telemetry: Database engine health, active WebSocket connections, system uptime.
+  - User role allocation: View and manage users across tenant roles.
+  - Security audit logs: Candidate single-attempt verification status and anti-cheat alerts.
+
+### 2.2 Role 2: Recruiter (`recruiter`)
+- **Dashboard View**: Drive Overview & Campaign Creation.
+- **Drive-Scoped Candidate Isolation**:
+  - Outside of a drive: Recruiter sees drive summary cards, cutoff metrics, candidate counts, and **"+ Create New Drive"**.
+  - Inside a drive (`/drives/[id]/pipeline`): Recruiter manages **only candidates belonging to that specific drive**:
+    - Upload & parse Excel/CSV candidate whitelist.
+    - View candidate test scores, device type, and live GPS coordinates.
+    - **Reactivate / Unlock Candidate Attempt** (exclusive recruiter permission).
+    - Share Drive Magic Link & QR Code.
+
+### 2.3 Role 3: L1 Technical Interviewer (`l1_interviewer`)
+- **Dashboard View**: **Drive Selector Screen** $\rightarrow$ **Drive-Specific L1 Candidate Pool**.
+- **Capabilities**:
+  - The interviewer first selects the active Drive/Campaign they are interviewing for.
+  - Once selected, the interviewer sees **only the L1 candidate pool for that drive** (`L1_ELIGIBLE` and claimed by them).
+  - Voluntary **Claim / Release** action.
+  - Opens review dossier: Candidate profile, live GPS geolocation map coordinates, and submitted test paper with answer keys.
+  - Submits technical verdict (Pass $\rightarrow$ `L2_ELIGIBLE`, Reject $\rightarrow$ `L1_REJECTED`) with rating (1-5) and feedback notes.
+
+### 2.4 Role 4: L2 Panel / Advanced Interviewer (`l2_interviewer`)
+- **Dashboard View**: **Drive Selector Screen** $\rightarrow$ **Drive-Specific L2 Candidate Pool**.
+- **Capabilities**:
+  - The interviewer first selects the active Drive/Campaign.
+  - Once selected, the interviewer sees **only candidates who cleared L1 for that drive** (`L2_ELIGIBLE` and claimed by them).
+  - Voluntary **Claim / Release** action.
+  - Opens L2 dossier: Full profile + test paper + **L1 interviewer ratings & feedback comments**.
+  - Submits final hiring decision (Pass $\rightarrow$ `SELECTED`, Reject $\rightarrow$ `L2_REJECTED`).
+
+---
+
+## 3. Actor Roles & Permissions Matrix
+
+| Capability | Admin | Recruiter (Inside Drive) | L1 Interviewer (Drive-Scoped) | L2 Interviewer (Drive-Scoped) | Candidate |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **Authentication Type** | Email + Password | Email + Password | Name Selection / Simple Login | Name Selection / Simple Login | Magic Link + Whitelisted Email |
-| **Unified Portal Dashboard Access (`/dashboard`)** | ✅ Admin View | ✅ Recruiter View | ✅ L1 Pool View | ✅ L2 Pool View | ❌ (Candidate Test Portal) |
-| **System Health Check & User Role Allocations** | ✅ Full | ❌ | ❌ | ❌ | ❌ |
-| **Create, Edit & Delete Drives** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
-| **Import Candidate Whitelist via Excel/CSV** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
-| **Manual & Bulk Candidate Interview Scheduling** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
-| **Generate & Distribute Magic Link + QR Code** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
-| **Auto-Fill Candidate Info from Whitelist** | System | System | ❌ | ❌ | ✅ Fast Confirmation |
-| **Whitelist Email Verification on Magic Link** | System | System | ❌ | ❌ | ✅ Strict Enforced |
-| **Live Geolocation Telemetry (Lat/Long/City)** | System | System | ❌ | ❌ | ✅ Captured at Start |
-| **Single-Attempt Lock on Test Start** | System | System | ❌ | ❌ | ✅ Strict Enforced |
-| **Reactivate / Unlock Candidate Attempt** | ✅ Full | ✅ Full (Exclusive) | ❌ | ❌ | ❌ |
-| **Claim / Release Candidate in L1 Pool** | ✅ Full | ✅ Full | ✅ Claim / Release | ❌ | ❌ |
-| **View L1 Dossier (Paper + Geo + Profile)** | ✅ Full | ✅ Full | ✅ Own Claimed | ❌ | ❌ |
-| **Submit L1 Technical Verdict (Pass $\rightarrow$ L2)** | ✅ Full | ✅ Full | ✅ Own Claimed | ❌ | ❌ |
-| **Claim / Release Candidate in L2 Pool** | ✅ Full | ✅ Full | ❌ | ✅ Claim / Release | ❌ |
-| **View L2 Dossier (L1 Notes + Rating + Paper)** | ✅ Full | ✅ Full | ❌ | ✅ Own Claimed | ❌ |
-| **Submit L2 Panel Decision (Pass / Reject)** | ✅ Full | ✅ Full | ❌ | ✅ Own Claimed | ❌ |
-| **Candidate 360 Pipeline & Rejection Reasons** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
+| **Visible in 4-Role Dashboard Switcher** | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ❌ (Candidate Portal) |
+| **System Health & User Governance** | ✅ Full | ❌ | ❌ | ❌ | ❌ |
+| **Create & Delete Drives** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ |
+| **Upload Excel/CSV Candidate Whitelist** | ✅ Full | ✅ Inside Drive | ❌ | ❌ | ❌ |
+| **Candidate 360 Tracking & Unlock Attempt** | ✅ Full | ✅ Inside Drive | ❌ | ❌ | ❌ |
+| **Drive Selection for Interview Pools** | Automatic | Automatic | ✅ Select Drive First | ✅ Select Drive First | ❌ |
+| **L1 Candidate Pool & Review Dossier** | ✅ Full | ✅ Full | ✅ Selected Drive Only | ❌ | ❌ |
+| **L2 Candidate Pool & L1 Notes Review** | ✅ Full | ✅ Full | ❌ | ✅ Selected Drive Only | ❌ |
+| **Candidate Test Entry & Geolocation** | System | System | ❌ | ❌ | ✅ Magic Link Only |
 
 ---
 
-## 3. User Scenarios & Acceptance Flows
+## 4. User Scenarios & Acceptance Flows
 
-### Scenario 1: Unified Dashboard & Role-Adaptive Navigation
-- **Given** an internal user visiting `http://localhost:3000/login`:
-- **When** logging in:
-  - **Admins & Recruiters**: Log in using Email & Password.
-  - **L1 & L2 Interviewers**: Switch tab to **"Interviewer Quick Access"**, select or enter their Name, and log in directly without a password.
-- **Then** the user is directed to the **Unified Dashboard (`/dashboard`)**, where the UI automatically renders their permitted views and tabs:
-  - Recruiters see Drive Management, Excel Import, Scheduling, and Pipeline 360.
-  - L1 Interviewers see the L1 Candidate Pool.
-  - L2 Interviewers see the L2 Candidate Pool.
-  - Admins see System Health, Role Management, and all drives.
+### Scenario 1: Switching Roles via the 4-Role Dashboard Component
+- **Given** any internal user on `/dashboard`:
+- **When** the user clicks on any of the 4 visible role cards (**Admin**, **Recruiter**, **L1 Interviewer**, **L2 Interviewer**):
+- **Then** the dashboard instantly switches its view and tools directly into that role's dedicated portal.
 
-### Scenario 2: Recruiter Imports Candidates from Excel, Schedules & Distributes Link
-- **Given** a logged-in Recruiter on the unified dashboard:
-- **When** the recruiter creates a drive:
-  - Configures job title, assessment questions with answer keys, and cutoff percentage.
-  - Uploads an Excel file (`.xlsx`, `.csv`) containing candidate records (`Name`, `Email`, `Phone`, `Experience`).
-  - Sets **Interview Scheduling** (Manual single candidate slot or Bulk slot scheduling for the batch).
-- **Then** the system:
-  - Whitelists all candidate emails and pre-stores their profile records.
-  - Generates the shareable **Drive Magic Link** (`/drive/{id}/apply`) and **QR Code**.
+### Scenario 2: Recruiter Drive-Scoped Candidate Management
+- **Given** the user in the **Recruiter** role:
+- **When** viewing the main dashboard:
+  - Sees high-level drive cards and can create/delete drives.
+- **When** clicking **"Manage Drive Candidates & Pipeline"**:
+  - Enters the drive workspace.
+  - Can import Excel whitelist, track candidate stages, view live GPS coordinates, and reactivate locked attempts **strictly for this drive**.
 
-### Scenario 3: Candidate Verification, Auto-Fill, Geolocation & Single-Attempt Lock
-- **Given** a candidate opening the Drive Magic Link:
-- **When** the candidate enters their email:
-  - **Step 1: Whitelist Check**: If email is not in the imported Excel whitelist, candidate is rejected: *"Your email is not authorized for this drive."*
-  - **Step 2: Auto-Fill**: Name, Phone, and Experience are instantly auto-filled from the uploaded Excel sheet so candidate can confirm in 1 click.
-  - **Step 3: Single-Attempt Check**: If candidate has already entered the test previously, access is blocked: *"Assessment session already used. Contact recruiter to reactivate your attempt."*
-  - **Step 4: Live Geolocation Capture**: Browser prompts for HTML5 Geolocation permission; latitude, longitude, and timestamp are captured and logged.
-  - **Step 5: Proctoring Consent & Test Entry**: Candidate enters the test. The attempt is immediately locked (`status: in_progress`).
-- **Then** any attempt to reopen the test link from another browser/tab is locked out.
-
-### Scenario 4: Recruiter Unlocks a Candidate Attempt
-- **Given** a candidate who faced network disconnection or browser crash:
-- **When** the recruiter opens the Candidate 360 Drawer in `/dashboard`:
-  - Sees candidate attempt marked as `TEST_LOCKED` or `IN_PROGRESS`.
-  - Clicks **"Reactivate Candidate Attempt"**.
-- **Then** the lock is cleared, enabling the candidate to resume or retake the test.
+### Scenario 3: L1 & L2 Interviewers Drive-First Selection Flow
+- **Given** the user in the **L1** or **L2 Interviewer** role:
+- **When** accessing the dashboard:
+  - First prompted to **Select a Recruitment Drive** from the active drives list.
+- **When** selecting a drive:
+  - Renders **only the candidates belonging to that drive** in the L1/L2 pool.
+  - L1 sees test paper answers + GPS coordinates.
+  - L2 sees test paper + L1 reviewer rating & feedback notes.
 
 ---
 
-## 4. Functional Requirements
+## 5. Functional Requirements
 
-### 4.1 Unified Dashboard & Authentication
-- **`FR-001`**: `/dashboard` shall serve as the unified workspace for all internal actors, dynamically rendering role-appropriate tabs and controls.
-- **`FR-002`**: Email + Password authentication for `admin` and `recruiter`.
-- **`FR-003`**: Instant Name-Based authentication for `l1_interviewer` and `l2_interviewer`.
-- **`FR-004`**: Admin tab shall provide system health monitoring, active session counts, and role configuration.
-
-### 4.2 Excel Import, Auto-Fill & Scheduling
-- **`FR-005`**: Recruiter drive creation and drive details page must support Excel (`.xlsx`, `.xls`) and CSV candidate bulk upload.
-- **`FR-006`**: Candidate registration endpoint must enforce whitelist matching and auto-fill profile details from the uploaded Excel record.
-- **`FR-007`**: Recruiter can perform **Manual Single Scheduling** and **Bulk Batch Scheduling** for candidate interview slots.
-
-### 4.3 Anti-Cheat & Attempt Lifecycle
-- **`FR-008`**: System shall capture HTML5 live geolocation (latitude, longitude, accuracy) upon test entry.
-- **`FR-009`**: Test attempts must enforce strict Single-Attempt Locking. Re-entry by the candidate is blocked.
-- **`FR-010`**: Recruiters and Admins shall have a dedicated **"Reactivate Attempt"** action to unlock candidate sessions.
-- **`FR-011`**: Dual-device proctoring (Laptop & Mobile Web) shall monitor fullscreen blur and tab/app switches.
-
-### 4.4 L1 & L2 Review Pools
-- **`FR-012`**: L1 pool allows claiming candidates, viewing submitted test paper with answer keys and live location, and submitting Pass/Reject.
-- **`FR-013`**: L2 pool allows claiming candidates, viewing candidate profile + test paper + **L1 interviewer ratings & feedback**, and submitting final hiring verdict.
-
----
-
-## 5. Success Criteria & Quality Metrics
-
-1. **SC-001**: 100% of internal user navigation (Admin, Recruiter, L1, L2) happens within the unified `/dashboard` workspace.
-2. **SC-002**: 100% of non-whitelisted emails attempting candidate registration are blocked.
-3. **SC-003**: Whitelisted candidate info is auto-filled in $<100$ms upon email entry.
-4. **SC-004**: 100% of candidate re-entry attempts are locked until reactivated by the recruiter.
-5. **SC-005**: Recruiters can perform manual and bulk interview slot scheduling directly from `/dashboard`.
+- **`FR-001`**: Dashboard (`/dashboard`) shall display a persistent **4-Role Component Switcher** permitting instant access to Admin, Recruiter, L1 Interviewer, and L2 Interviewer workspaces.
+- **`FR-002`**: Recruiter role shall manage candidate records, Excel whitelist imports, and attempt unlocks **exclusively inside individual drive workspaces**, keeping the top dashboard clean.
+- **`FR-003`**: L1 and L2 interviewers shall first select an active Recruitment Drive before viewing the candidate review pool.
+- **`FR-004`**: L1 interviewer pool shall display only candidates for the selected drive with test paper answer keys and live GPS coordinates.
+- **`FR-005`**: L2 interviewer pool shall display only candidates for the selected drive who cleared L1, including L1 notes and ratings.
+- **`FR-006`**: Admin role shall display real-time telemetry, database health, security checks, and user role management.
