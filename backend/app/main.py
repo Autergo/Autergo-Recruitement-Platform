@@ -92,14 +92,59 @@ async def lifespan(app: FastAPI):
                         "tab_switch_limit": 3,
                         "webcam_required": False
                     },
-                    current_stage=DriveStage.REGISTRATION_OPEN,
-                    is_active=True
+                    status="published",
+                    created_by=recruiter_user.id
                 )
                 db.add(drive)
+                await db.flush()
+
+                # Create Assessment with default questions for the demo drive
+                from app.models.assessment import Assessment
+                default_questions = [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "What is the time complexity of searching in a balanced binary search tree?",
+                        "question_type": "single_mcq",
+                        "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+                        "correct_answer": "O(log n)",
+                        "marks": 5.0
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Write a function `solution(s)` that returns the reverse of string `s`.",
+                        "question_type": "coding",
+                        "boilerplate": "def solution(s):\n    pass",
+                        "test_cases": [{"input": "autergo", "expected_output": "ogretua"}],
+                        "correct_answer": "return s[::-1]",
+                        "marks": 10.0
+                    }
+                ]
+                assessment = Assessment(
+                    drive_id=drive.id,
+                    title="Senior Full Stack Engineer 2026 - Assessment Paper",
+                    duration_minutes=45,
+                    sections=[{"name": "Technical & Coding", "questions": default_questions}],
+                    paper_versions={"A": default_questions}
+                )
+                db.add(assessment)
+
+                # Add default stages
+                stages = [
+                    DriveStage(drive_id=drive.id, stage_type="registration", sequence_order=1),
+                    DriveStage(drive_id=drive.id, stage_type="assessment", sequence_order=2),
+                    DriveStage(drive_id=drive.id, stage_type="technical_l1", sequence_order=3),
+                    DriveStage(drive_id=drive.id, stage_type="technical_l2", sequence_order=4),
+                    DriveStage(drive_id=drive.id, stage_type="final_selection", sequence_order=5),
+                ]
+                db.add_all(stages)
+
                 await db.commit()
-                print(">> Auto-seeded initial Organization, Admin, Recruiter, and Demo Drive successfully.")
+                print(">> Auto-seeded initial Organization, Admin, Recruiter, Demo Drive, and Assessment successfully.")
+            else:
+                print(">> Database already seeded, skipping.")
+        print(f">> Using database: {settings.SQLALCHEMY_DATABASE_URI.split('@')[-1] if '@' in settings.SQLALCHEMY_DATABASE_URI else settings.SQLALCHEMY_DATABASE_URI}")
     except Exception as e:
-        print(f">> Notice: Startup auto-seeder completed: {e}")
+        print(f">> Notice: Startup auto-seeder error: {e}")
 
     yield
 

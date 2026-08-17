@@ -257,10 +257,13 @@ async def submit_candidate_assessment(
     assess_res = await db.execute(assess_stmt)
     assessment = assess_res.scalar_one_or_none()
 
+    if not assessment or not assessment.paper_versions:
+        raise HTTPException(status_code=404, detail="No assessment paper found for this drive. Contact your recruiter.")
+
     # Grade questions
     total_marks = 0.0
     scored_marks = 0.0
-    questions = assessment.paper_versions.get("A", []) if assessment and assessment.paper_versions else []
+    questions = assessment.paper_versions.get("A", [])
 
     for q in questions:
         q_id = str(q.get("id"))

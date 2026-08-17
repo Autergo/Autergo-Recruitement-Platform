@@ -195,12 +195,16 @@ async def get_drive_share_info(
     if not drive:
         raise HTTPException(status_code=404, detail="Drive not found")
 
+    # Use FRONTEND_URL env var if available, otherwise fall back to relative path
+    import os
+    frontend_url = os.environ.get("FRONTEND_URL", "https://autergo-recruitement-platform.vercel.app")
+
     return {
         "drive_id": str(drive.id),
         "title": drive.title,
         "job_title": drive.job_title,
         "magic_link": f"/drive/{drive.id}/apply",
-        "qr_code_url": f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=http://localhost:3000/drive/{drive.id}/apply"
+        "qr_code_url": f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={frontend_url}/drive/{drive.id}/apply"
     }
 
 @router.get("/{drive_id}")

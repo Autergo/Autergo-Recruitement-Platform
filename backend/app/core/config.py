@@ -1,4 +1,6 @@
+import os
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from typing import List, Optional
 
 class Settings(BaseSettings):
@@ -10,9 +12,20 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # Database Configuration (PostgreSQL by default with SQLite local fallback)
+    # USE_SQLITE is automatically set to False when DATABASE_URL is present
     USE_SQLITE: bool = True
     SQLITE_DB_FILE: str = "autergo_local.db"
     DATABASE_URL: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _auto_detect_database(self):
+        """Auto-disable SQLite when DATABASE_URL is set (e.g. on Render/Heroku)."""
+        env_url = os.environ.get("DATABASE_URL")
+        if env_url or self.DATABASE_URL:
+            self.USE_SQLITE = False
+            if not self.DATABASE_URL and env_url:
+                self.DATABASE_URL = env_url
+        return self
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "autergo"
