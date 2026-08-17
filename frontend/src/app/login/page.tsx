@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/config/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/auth/interviewers')
+    fetch(`${API_BASE_URL}/auth/interviewers`)
       .then((res) => res.json())
       .then((data) => setInterviewersList(data || []))
       .catch(console.error);
@@ -32,7 +33,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -64,7 +65,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/auth/interviewer-login', {
+      const res = await fetch(`${API_BASE_URL}/auth/interviewer-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: interviewerName.trim(), role: interviewerRole }),

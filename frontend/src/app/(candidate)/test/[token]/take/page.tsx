@@ -1,5 +1,7 @@
 'use client';
 
+import { API_BASE_URL } from '@/config/api';
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -140,7 +142,7 @@ export default function CandidateTakeAssessment() {
 
     const token = localStorage.getItem('candidate_session_token');
     if (token) {
-      fetch('http://localhost:8000/api/v1/public/proctoring/events', {
+      fetch(`${API_BASE_URL}/public/proctoring/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,7 +196,7 @@ export default function CandidateTakeAssessment() {
       const token = localStorage.getItem('candidate_session_token');
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      await fetch('http://localhost:8000/api/v1/public/assessment/submit', {
+      await fetch(`${API_BASE_URL}/public/assessment/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

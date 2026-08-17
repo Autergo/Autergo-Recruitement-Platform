@@ -1,5 +1,7 @@
 'use client';
 
+import { API_BASE_URL } from '@/config/api';
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -17,7 +19,7 @@ export default function CandidateVerifyPage() {
   useEffect(() => {
     async function checkToken() {
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/public/invitations/${token}`);
+        const res = await fetch(`${API_BASE_URL}/public/invitations/${token}`);
         if (res.ok) {
           setDriveInfo(await res.json());
         } else {
@@ -37,7 +39,7 @@ export default function CandidateVerifyPage() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/public/verify', {
+      const res = await fetch(`${API_BASE_URL}/public/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,7 @@
 'use client';
 
+import { API_BASE_URL } from '@/config/api';
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -27,7 +29,7 @@ export default function CandidateApplyPage() {
   useEffect(() => {
     const fetchDriveDetails = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}`);
+        const res = await fetch(`${API_BASE_URL}/public/drive/${driveId}`);
         if (res.ok) {
           const data = await res.json();
           setDrive(data);
@@ -48,7 +50,7 @@ export default function CandidateApplyPage() {
     setWhitelistError('');
 
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}/check-whitelist`, {
+      const res = await fetch(`${API_BASE_URL}/public/drive/${driveId}/check-whitelist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -103,7 +105,7 @@ export default function CandidateApplyPage() {
   const handleStartTest = async () => {
     setSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}/register`, {
+      const res = await fetch(`${API_BASE_URL}/public/drive/${driveId}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

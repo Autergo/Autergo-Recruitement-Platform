@@ -1,5 +1,7 @@
 'use client';
 
+import { API_BASE_URL } from '@/config/api';
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -16,7 +18,7 @@ export default function L2InterviewerPoolPage() {
   const fetchL2Pool = async () => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('http://localhost:8000/api/v1/interviews/l2/pool', {
+      const res = await fetch('${API_BASE_URL}/interviews/l2/pool', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -33,7 +35,7 @@ export default function L2InterviewerPoolPage() {
   const handleClaim = async (applicationId: string) => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/l2/${applicationId}/claim`, {
+      const res = await fetch(`${API_BASE_URL}/interviews/l2/${applicationId}/claim`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -50,7 +52,7 @@ export default function L2InterviewerPoolPage() {
   const handleRelease = async (applicationId: string) => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/l2/${applicationId}/release`, {
+      const res = await fetch(`${API_BASE_URL}/interviews/l2/${applicationId}/release`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -179,3 +181,4 @@ export default function L2InterviewerPoolPage() {
     </div>
   );
 }
+

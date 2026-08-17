@@ -1,5 +1,7 @@
 'use client';
 
+import { API_BASE_URL } from '@/config/api';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -69,7 +71,7 @@ export default function CreateDrivePage() {
 
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('http://localhost:8000/api/v1/drives', {
+      const res = await fetch('${API_BASE_URL}/drives', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -278,3 +280,4 @@ export default function CreateDrivePage() {
     </div>
   );
 }
+

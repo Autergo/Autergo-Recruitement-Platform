@@ -1,5 +1,7 @@
 'use client';
 
+import { API_BASE_URL } from '@/config/api';
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -69,7 +71,7 @@ export default function UnifiedDashboard() {
   const fetchCustomRoles = async () => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('http://localhost:8000/api/v1/organizations/roles', {
+      const res = await fetch('${API_BASE_URL}/organizations/roles', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -85,7 +87,7 @@ export default function UnifiedDashboard() {
     setCreatingRole(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('http://localhost:8000/api/v1/organizations/roles', {
+      const res = await fetch('${API_BASE_URL}/organizations/roles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +122,7 @@ export default function UnifiedDashboard() {
   const fetchAdminUsers = async () => {
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('http://localhost:8000/api/v1/organizations/users', {
+      const res = await fetch('${API_BASE_URL}/organizations/users', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -136,7 +138,7 @@ export default function UnifiedDashboard() {
     setCreatingUser(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('http://localhost:8000/api/v1/organizations/users', {
+      const res = await fetch('${API_BASE_URL}/organizations/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +205,7 @@ export default function UnifiedDashboard() {
     setUpdatingCutoff(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch(`http://localhost:8000/api/v1/drives/${editingCutoffDrive.id}/cutoff`, {
+      const res = await fetch(`${API_BASE_URL}/drives/${editingCutoffDrive.id}/cutoff`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -233,7 +235,7 @@ export default function UnifiedDashboard() {
     setLoadingDrives(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch('http://localhost:8000/api/v1/drives', {
+      const res = await fetch('${API_BASE_URL}/drives', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -264,7 +266,7 @@ export default function UnifiedDashboard() {
 
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch(`http://localhost:8000/api/v1/drives/${driveId}`, {
+      const res = await fetch(`${API_BASE_URL}/drives/${driveId}`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -295,8 +297,8 @@ export default function UnifiedDashboard() {
     try {
       const token = localStorage.getItem('autergo_token');
       const url = driveId
-        ? `http://localhost:8000/api/v1/interviews/l1/pool?drive_id=${driveId}`
-        : `http://localhost:8000/api/v1/interviews/l1/pool`;
+        ? `${API_BASE_URL}/interviews/l1/pool?drive_id=${driveId}`
+        : `${API_BASE_URL}/interviews/l1/pool`;
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -315,8 +317,8 @@ export default function UnifiedDashboard() {
     try {
       const token = localStorage.getItem('autergo_token');
       const url = driveId
-        ? `http://localhost:8000/api/v1/interviews/l2/pool?drive_id=${driveId}`
-        : `http://localhost:8000/api/v1/interviews/l2/pool`;
+        ? `${API_BASE_URL}/interviews/l2/pool?drive_id=${driveId}`
+        : `${API_BASE_URL}/interviews/l2/pool`;
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -452,7 +454,7 @@ export default function UnifiedDashboard() {
                             onClick={async () => {
                               if (!confirm(`Delete user ${u.full_name}?`)) return;
                               const token = localStorage.getItem('autergo_token');
-                              const res = await fetch(`http://localhost:8000/api/v1/organizations/users/${u.id}`, {
+                              const res = await fetch(`${API_BASE_URL}/organizations/users/${u.id}`, {
                                 method: 'DELETE',
                                 headers: token ? { Authorization: `Bearer ${token}` } : {},
                               });
@@ -1065,3 +1067,4 @@ export default function UnifiedDashboard() {
     </div>
   );
 }
+

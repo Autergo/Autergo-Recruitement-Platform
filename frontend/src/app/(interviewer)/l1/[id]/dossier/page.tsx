@@ -1,5 +1,7 @@
 'use client';
 
+import { API_BASE_URL } from '@/config/api';
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -22,7 +24,7 @@ export default function L1CandidateDossierPage() {
     const fetchDossier = async () => {
       try {
         const token = localStorage.getItem('autergo_token');
-        const res = await fetch(`http://localhost:8000/api/v1/interviews/l1/${applicationId}/dossier`, {
+        const res = await fetch(`${API_BASE_URL}/interviews/l1/${applicationId}/dossier`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
@@ -44,7 +46,7 @@ export default function L1CandidateDossierPage() {
     setSubmitting(true);
     try {
       const token = localStorage.getItem('autergo_token');
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/l1/${applicationId}/evaluate`, {
+      const res = await fetch(`${API_BASE_URL}/interviews/l1/${applicationId}/evaluate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
