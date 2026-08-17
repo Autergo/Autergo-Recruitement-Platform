@@ -138,8 +138,11 @@ async def live_drive_websocket(websocket: WebSocket, drive_id: str):
         ws_manager.disconnect(drive_id, websocket)
 
 @app.get("/")
+@app.head("/")
 @app.get("/health")
+@app.head("/health")
 @app.get("/api/v1/health")
+@app.head("/api/v1/health")
 async def health_check():
     """
     Dedicated UptimeRobot / Ping health check endpoint.
