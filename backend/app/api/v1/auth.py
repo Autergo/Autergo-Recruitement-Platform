@@ -57,7 +57,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     clean_email = req.email.strip().lower()
     stmt = select(User).where(User.email.ilike(clean_email), User.is_active == True)
     result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
+    user = result.scalars().first()
     
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(

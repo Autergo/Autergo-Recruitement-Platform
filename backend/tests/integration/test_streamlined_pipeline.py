@@ -8,7 +8,7 @@ async def test_recruiter_drive_creation_and_magic_link():
     """Verify that recruiter can create drive and get magic link & QR code"""
     async with AsyncClient(app=app, base_url="http://test") as ac:
         # 1. Login as recruiter
-        login_res = await ac.post("/api/v1/auth/login", data={"username": "recruiter@autergo.com", "password": "Recruiter@123"})
+        login_res = await ac.post("/api/v1/auth/login", json={"email": "recruiter@autergo.com", "password": "Recruiter@123"})
         assert login_res.status_code == 200
         token = login_res.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -38,9 +38,24 @@ async def test_recruiter_drive_creation_and_magic_link():
         assert data["magic_link"].startswith("/drive/")
         drive_id = data["id"]
 
+        # Whitelist candidate
+        cand_email = f"candidate_{uuid.uuid4().hex[:6]}@example.com"
+        import_res = await ac.post(f"/api/v1/drives/{drive_id}/import-whitelist", json={
+            "candidates": [
+                {
+                    "full_name": "Integration Candidate",
+                    "email": cand_email,
+                    "phone": "+1234567890",
+                    "experience_years": 3.0,
+                    "referral_source": "LinkedIn"
+                }
+            ]
+        }, headers=headers)
+        assert import_res.status_code == 200
+
         # 3. Candidate registers via public magic link
         reg_res = await ac.post(f"/api/v1/public/drive/{drive_id}/register", json={
-            "email": f"candidate_{uuid.uuid4().hex[:6]}@example.com",
+            "email": cand_email,
             "full_name": "Integration Candidate",
             "experience_years": 3.0,
             "referral_source": "LinkedIn"

@@ -112,25 +112,33 @@ async def create_drive(
     await db.flush()
 
     # Create Assessment Paper with Questions
-    question_payload = [q.model_dump() for q in req.questions] if req.questions else [
-        {
-            "id": str(uuid.uuid4()),
-            "title": "What is the time complexity of searching in a balanced binary search tree?",
-            "question_type": "single_mcq",
-            "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
-            "correct_answer": "O(log n)",
-            "marks": 5.0
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "title": "Write a function `solution(s)` that returns the reverse of string `s`.",
-            "question_type": "coding",
-            "boilerplate": "def solution(s):\n    pass",
-            "test_cases": [{"input": "autergo", "expected_output": "ogretua"}],
-            "correct_answer": "return s[::-1]",
-            "marks": 10.0
-        }
-    ]
+    question_payload = []
+    if req.questions:
+        for q in req.questions:
+            qd = q.model_dump()
+            if not qd.get("id"):
+                qd["id"] = str(uuid.uuid4())
+            question_payload.append(qd)
+    else:
+        question_payload = [
+            {
+                "id": str(uuid.uuid4()),
+                "title": "What is the time complexity of searching in a balanced binary search tree?",
+                "question_type": "single_mcq",
+                "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+                "correct_answer": "O(log n)",
+                "marks": 5.0
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "title": "Write a function `solution(s)` that returns the reverse of string `s`.",
+                "question_type": "coding",
+                "boilerplate": "def solution(s):\n    pass",
+                "test_cases": [{"input": "autergo", "expected_output": "ogretua"}],
+                "correct_answer": "return s[::-1]",
+                "marks": 10.0
+            }
+        ]
 
     assessment = Assessment(
         drive_id=drive.id,

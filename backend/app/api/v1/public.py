@@ -266,11 +266,11 @@ async def submit_candidate_assessment(
         q_id = str(q.get("id"))
         q_marks = float(q.get("marks", 1.0))
         total_marks += q_marks
-        submitted = req.answers.get(q_id)
+        submitted = req.answers.get(q_id) if req.answers.get(q_id) is not None else req.answers.get(q.get("id"))
         correct = q.get("correct_answer")
 
         is_correct = False
-        if submitted is not None and str(submitted).strip() == str(correct).strip():
+        if submitted is not None and str(submitted).strip().lower() == str(correct).strip().lower():
             is_correct = True
             scored_marks += q_marks
 
