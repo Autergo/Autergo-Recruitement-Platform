@@ -221,14 +221,118 @@ async def list_drive_candidates(
         cand_res = await db.execute(cand_stmt)
         cand = cand_res.scalar_one_or_none()
 
-        output.append({
-            "application_id": str(app.id),
-            "candidate_id": str(cand.id) if cand else None,
-            "full_name": cand.full_name if cand else "Candidate",
-            "email": cand.email if cand else "",
-            "phone": cand.phone if cand else "",
-            "status": app.status,
-            "profile_info": app.custom_field_values,
-            "applied_at": app.applied_at.isoformat() if app.applied_at else None,
-        })
-    return output
+@router.delete("/{drive_id}")
+async def delete_drive(
+    drive_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager", "recruiter", "admin"]))
+):
+    stmt = select(RecruitmentDrive).where(RecruitmentDrive.id == drive_id, RecruitmentDrive.tenant_id == current_user.tenant_id)
+    res = await db.execute(stmt)
+    drive = res.scalar_one_or_none()
+    if not drive:
+        raise HTTPException(status_code=404, detail="Drive not found")
+
+    await db.delete(drive)
+    await db.commit()
+    return {"status": "deleted", "drive_id": str(drive_id)}
+
+class CandidateImportItem(BaseModel):
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    experience_years: Optional[float] = 0.0
+    referral_source: Optional[str] = "Excel Import"
+
+class BulkImportRequest(BaseModel):
+    candidates: List[CandidateImportItem]
+
+@router.post("/{drive_id}/import-whitelist")
+async def import_candidates_whitelist(
+    drive_id: uuid.UUID,
+    req: BulkImportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager", "recruiter", "admin"]))
+):
+    stmt = select(RecruitmentDrive).where(RecruitmentDrive.id == drive_id)
+    res = await db.execute(stmt)
+    drive = res.scalar_one_or_none()
+    if not drive:
+        raise HTTPException(status_code=404, detail="Drive not found")
+
+    imported_count = 0
+    for item in req.candidates:
+        cand_email = item.email.strip().lower()
+        if not cand_email:
+            continue
+
+        # Find or create candidate
+        cand_stmt = select(Candidate).where(Candidate.email == cand_email, Candidate.tenant_id == drive.tenant_id)
+        cand_res = await db.execute(cand_stmt)
+        cand = cand_res.scalar_one_or_none()
+        if not cand:
+            cand = Candidate(
+                tenant_id=drive.tenant_id,
+                email=cand_email,
+                full_name=item.full_name,
+                phone=item.phone
+            )
+            db.add(cand)
+            await db.flush()
+
+        # Check existing application
+        app_stmt = select(Application).where(Application.drive_id == drive.id, Application.candidate_id == cand.id)
+        app_res = await db.execute(app_stmt)
+        app = app_res.scalar_one_or_none()
+
+        profile_data = {
+            "full_name": item.full_name,
+            "email": cand_email,
+            "phone": item.phone,
+            "experience_years": item.experience_years,
+            "referral_source": item.referral_source,
+            "is_whitelisted": True
+        }
+
+        if not app:
+            app = Application(
+                tenant_id=drive.tenant_id,
+                drive_id=drive.id,
+                candidate_id=cand.id,
+                status="whitelisted",
+                invitation_token=f"tok_{uuid.uuid4().hex[:12]}",
+                custom_field_values=profile_data
+            )
+            db.add(app)
+        else:
+            current_vals = dict(app.custom_field_values or {})
+            current_vals.update(profile_data)
+            app.custom_field_values = current_vals
+
+        imported_count += 1
+
+    await db.commit()
+    return {"status": "success", "imported_candidates": imported_count}
+
+@router.post("/{drive_id}/candidates/{application_id}/reactivate")
+async def reactivate_candidate_attempt(
+    drive_id: uuid.UUID,
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager", "recruiter", "admin"]))
+):
+    stmt = select(Application).where(Application.id == application_id, Application.drive_id == drive_id)
+    res = await db.execute(stmt)
+    app = res.scalar_one_or_none()
+    if not app:
+        raise HTTPException(status_code=404, detail="Candidate application not found")
+
+    app.status = "whitelisted"
+    meta = dict(app.custom_field_values or {})
+    meta["attempt_locked"] = False
+    meta["reactivated_by"] = current_user.full_name
+    meta["reactivated_at"] = str(uuid.uuid4())
+    app.custom_field_values = meta
+    await db.commit()
+
+    return {"status": "reactivated", "application_id": str(app.id)}

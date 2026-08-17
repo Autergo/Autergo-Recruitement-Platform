@@ -11,38 +11,69 @@ export default function CandidateApplyPage() {
   const [drive, setDrive] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Form State
-  const [email, setEmail] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [experienceYears, setExperienceYears] = useState(1);
-  const [referralSource, setReferralSource] = useState('Direct');
+  // Step Management: 1: Email Check, 2: Confirm Info & Geolocation, 3: Proctoring Agreement
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [checkingWhitelist, setCheckingWhitelist] = useState(false);
+  const [whitelistError, setWhitelistError] = useState('');
+  const [geoLocation, setGeoLocation] = useState<any | null>(null);
+  const [geoStatus, setGeoStatus] = useState<'pending' | 'captured' | 'denied'>('pending');
 
-  // Proctoring Agreement Modal State
-  const [showProctorModal, setShowProctorModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCheckingWhitelist(true);
+    setWhitelistError('');
 
-  useEffect(() => {
-    fetchDriveDetails();
-  }, [driveId]);
-
-  const fetchDriveDetails = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}`);
+      const res = await fetch(`http://localhost:8000/api/v1/public/drive/${driveId}/check-whitelist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+
       if (res.ok) {
         const data = await res.json();
-        setDrive(data);
+        if (data.prefill) {
+          setFullName(data.prefill.full_name || '');
+          setPhone(data.prefill.phone || '');
+          setExperienceYears(data.prefill.experience_years || 1);
+          setReferralSource(data.prefill.referral_source || 'Excel Import');
+        }
+        setStep(2);
+        captureGeoLocation();
+      } else if (res.status === 423) {
+        setWhitelistError('🔒 Your assessment session has already been used. Please contact the recruiter to reactivate your attempt.');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setWhitelistError(errData.detail || '❌ Your email is not authorized for this recruitment drive.');
       }
     } catch (err) {
       console.error(err);
+      setWhitelistError('Network error checking candidate whitelist.');
     } finally {
-      setLoading(false);
+      setCheckingWhitelist(false);
     }
   };
 
-  const handleOpenProctorModal = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowProctorModal(true);
+  const captureGeoLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGeoLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy_meters: pos.coords.accuracy,
+            timestamp: new Date().toISOString(),
+          });
+          setGeoStatus('captured');
+        },
+        (err) => {
+          console.warn('Geolocation denied or unavailable:', err);
+          setGeoLocation({ error: err.message, status: 'denied', timestamp: new Date().toISOString() });
+          setGeoStatus('denied');
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
   };
 
   const handleStartTest = async () => {
@@ -52,11 +83,12 @@ export default function CandidateApplyPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
+          email: email.trim().toLowerCase(),
           full_name: fullName,
           phone,
           experience_years: Number(experienceYears),
           referral_source: referralSource,
+          geolocation: geoLocation || { status: 'unsupported' },
         }),
       });
 
@@ -66,10 +98,9 @@ export default function CandidateApplyPage() {
         localStorage.setItem('candidate_assessment_questions', JSON.stringify(data.questions));
         localStorage.setItem('candidate_duration_minutes', data.duration_minutes);
 
-        // Redirect to assessment runner
         router.push(`/test/${data.attempt_id}/take`);
       } else {
-        alert('Failed to register. Please check your details.');
+        alert('Could not start test session.');
       }
     } catch (err) {
       console.error(err);
@@ -98,87 +129,112 @@ export default function CandidateApplyPage() {
           <p className="text-sm text-slate-400">{drive.job_title}</p>
         </div>
 
-        <form onSubmit={handleOpenProctorModal} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">Email Address *</label>
-            <input
-              type="email"
-              required
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">Full Legal Name *</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Priya Sharma"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        {step === 1 && (
+          <form onSubmit={handleVerifyEmail} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Phone Number</label>
+              <label className="block text-xs font-bold text-slate-300 mb-1">
+                Enter Your Whitelisted Email Address *
+              </label>
               <input
-                type="tel"
-                placeholder="+91 9876543210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                type="email"
+                required
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Total Experience (Years)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={experienceYears}
-                onChange={(e) => setExperienceYears(Number(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">Referral / Source</label>
-            <select
-              value={referralSource}
-              onChange={(e) => setReferralSource(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+            {whitelistError && (
+              <div className="p-3 bg-rose-950/80 border border-rose-800 rounded-xl text-xs text-rose-300">
+                {whitelistError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={checkingWhitelist}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xl transition-all text-sm mt-4 disabled:opacity-50"
             >
-              <option value="Direct">Direct Applicant</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="Campus Placement">Campus Placement</option>
-              <option value="Employee Referral">Employee Referral</option>
-            </select>
-          </div>
+              {checkingWhitelist ? 'Checking Whitelist...' : 'Verify Email & Proceed &rarr;'}
+            </button>
+          </form>
+        )}
 
-          <button
-            type="submit"
-            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xl transition-all text-sm mt-4"
-          >
-            Proceed to Proctoring & Assessment &rarr;
-          </button>
-        </form>
+        {step === 2 && (
+          <div className="space-y-5">
+            <div className="p-3.5 bg-emerald-950/40 border border-emerald-800/80 rounded-xl flex justify-between items-center text-xs">
+              <span className="text-emerald-300 font-bold">✓ Whitelist Verified for {email}</span>
+              <span className="text-slate-400 font-mono">
+                {geoStatus === 'captured' ? '📍 GPS Captured' : '🛰️ Locating...'}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Full Legal Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Experience (Years)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={experienceYears}
+                    onChange={(e) => setExperienceYears(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs"
+              >
+                &larr; Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xl text-sm"
+              >
+                Proceed to Proctoring &rarr;
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Proctoring Warning & Consent Modal */}
-      {showProctorModal && (
+      {/* Proctoring Warning & Consent Modal (Step 3) */}
+      {step === 3 && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-lg w-full shadow-2xl space-y-6">
             <div className="text-center">
               <span className="text-3xl">🛡️</span>
-              <h2 className="text-xl font-bold text-white mt-2">Proctoring & Integrity Agreement</h2>
+              <h2 className="text-xl font-bold text-white mt-2">Test Integrity & Proctoring Agreement</h2>
               <p className="text-xs text-slate-400 mt-1">
-                Please read and acknowledge the test integrity rules before entering.
+                Please acknowledge that your test session is single-attempt and proctored.
               </p>
             </div>
 
@@ -186,19 +242,19 @@ export default function CandidateApplyPage() {
               <div className="flex gap-2">
                 <span className="text-emerald-400 font-bold">1.</span>
                 <span>
-                  <strong>Full-Screen Mode Required:</strong> Your test must remain in full-screen. Exiting full-screen is logged as a violation.
+                  <strong>Single-Attempt Lock:</strong> Once you start the test, this link is locked. If closed, only the recruiter can reactivate it.
                 </span>
               </div>
               <div className="flex gap-2">
                 <span className="text-emerald-400 font-bold">2.</span>
                 <span>
-                  <strong>Tab & App Switching Tracking:</strong> Navigating away from this tab or minimizing the browser window triggers immediate telemetry alerts.
+                  <strong>Full-Screen & Tab-Switching:</strong> Navigating away or minimizing triggers immediate telemetry violations.
                 </span>
               </div>
               <div className="flex gap-2">
                 <span className="text-emerald-400 font-bold">3.</span>
                 <span>
-                  <strong>Laptop & Mobile Web Support:</strong> The test runner monitors focus events across both desktop browsers and mobile web.
+                  <strong>Live Geolocation:</strong> {geoStatus === 'captured' ? 'GPS location captured successfully.' : 'Location recorded.'}
                 </span>
               </div>
             </div>
@@ -206,7 +262,7 @@ export default function CandidateApplyPage() {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setShowProctorModal(false)}
+                onClick={() => setStep(2)}
                 className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs"
               >
                 Cancel
@@ -217,7 +273,7 @@ export default function CandidateApplyPage() {
                 disabled={submitting}
                 className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-lg disabled:opacity-50"
               >
-                {submitting ? 'Starting...' : 'I Agree & Start Assessment'}
+                {submitting ? 'Starting Session...' : 'I Agree & Start Assessment'}
               </button>
             </div>
           </div>

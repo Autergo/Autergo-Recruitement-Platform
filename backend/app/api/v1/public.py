@@ -17,12 +17,78 @@ from app.models.proctoring import ProctorSession, ProctorEvent
 
 router = APIRouter(prefix="/public", tags=["Public Candidate Flow"])
 
+class WhitelistCheckRequest(BaseModel):
+    email: EmailStr
+
+@router.post("/drive/{drive_id}/check-whitelist")
+async def check_candidate_whitelist(
+    drive_id: uuid.UUID,
+    req: WhitelistCheckRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    cand_email = req.email.strip().lower()
+    
+    # 1. Check drive exists
+    drive_stmt = select(RecruitmentDrive).where(RecruitmentDrive.id == drive_id)
+    drive_res = await db.execute(drive_stmt)
+    drive = drive_res.scalar_one_or_none()
+    if not drive:
+        raise HTTPException(status_code=404, detail="Recruitment drive not found")
+
+    # 2. Query Candidate application in this drive
+    cand_stmt = select(Candidate).where(Candidate.email == cand_email, Candidate.tenant_id == drive.tenant_id)
+    cand_res = await db.execute(cand_stmt)
+    cand = cand_res.scalar_one_or_none()
+
+    if not cand:
+        # Check if drive has an open registration or strict whitelist
+        # If applications exist for drive, enforce whitelist
+        count_stmt = select(Application).where(Application.drive_id == drive.id)
+        count_res = await db.execute(count_stmt)
+        total_apps = count_res.scalars().all()
+        if len(total_apps) > 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your email is not in the authorized candidate whitelist for this recruitment drive. Please contact your recruiter."
+            )
+        return {"whitelisted": True, "prefill": {"email": cand_email, "full_name": "", "phone": "", "experience_years": 0}}
+
+    app_stmt = select(Application).where(Application.drive_id == drive.id, Application.candidate_id == cand.id)
+    app_res = await db.execute(app_stmt)
+    app = app_res.scalar_one_or_none()
+
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your email is not in the authorized candidate whitelist for this recruitment drive."
+        )
+
+    # 3. Check Single-Attempt Lock
+    meta = dict(app.custom_field_values or {})
+    if app.status in ["test_in_progress", "submitted", "l1_eligible", "l1_in_progress", "l1_rejected", "l2_eligible", "l2_in_progress", "l2_rejected", "selected", "test_rejected"] and meta.get("attempt_locked", True):
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Assessment attempt already used. Please contact your recruiter to reactivate your session."
+        )
+
+    return {
+        "whitelisted": True,
+        "prefill": {
+            "email": cand.email,
+            "full_name": cand.full_name or meta.get("full_name", ""),
+            "phone": cand.phone or meta.get("phone", ""),
+            "experience_years": meta.get("experience_years", 0.0),
+            "referral_source": meta.get("referral_source", "Excel Import")
+        }
+    }
+
 class CandidateRegisterRequest(BaseModel):
     email: EmailStr
     full_name: str
     phone: Optional[str] = None
     experience_years: Optional[float] = 0.0
     referral_source: Optional[str] = "Direct"
+    geolocation: Optional[Dict[str, Any]] = {}
     custom_fields: Optional[Dict[str, Any]] = {}
 
 class AnswerSubmitRequest(BaseModel):
@@ -86,6 +152,8 @@ async def register_candidate(
         "phone": req.phone,
         "experience_years": req.experience_years,
         "referral_source": req.referral_source,
+        "geolocation": req.geolocation,
+        "attempt_locked": True,
         **(req.custom_fields or {})
     }
 
@@ -94,13 +162,14 @@ async def register_candidate(
             tenant_id=drive.tenant_id,
             drive_id=drive.id,
             candidate_id=candidate.id,
-            status="registered",
+            status="test_in_progress",
             invitation_token=f"tok_{uuid.uuid4().hex[:12]}",
             custom_field_values=profile_data
         )
         db.add(app)
         await db.flush()
     else:
+        app.status = "test_in_progress"
         app.custom_field_values = profile_data
 
     # Fetch assessment paper
@@ -114,7 +183,7 @@ async def register_candidate(
         assessment_id=assessment.id if assessment else drive.id,
         paper_version="A",
         status="in_progress",
-        device_binding_meta={"registered_name": req.full_name}
+        device_binding_meta={"registered_name": req.full_name, "geolocation": req.geolocation}
     )
     db.add(attempt)
     await db.flush()

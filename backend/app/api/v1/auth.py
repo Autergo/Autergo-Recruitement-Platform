@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from pydantic import BaseModel
 import jwt
 from jwt.exceptions import PyJWTError as JWTError
 from app.core.database import get_db
@@ -82,3 +83,56 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+class NameLoginRequest(BaseModel):
+    name: str
+    role: str = "l1_interviewer" # l1_interviewer or l2_interviewer
+
+@router.post("/interviewer-login", response_model=TokenResponse)
+async def interviewer_name_login(req: NameLoginRequest, db: AsyncSession = Depends(get_db)):
+    # Find or auto-create interviewer user
+    stmt = select(User).where(User.full_name.ilike(f"%{req.name.strip()}%"), User.is_active == True)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        # Find default organization
+        org_stmt = select(Organization).limit(1)
+        org_res = await db.execute(org_stmt)
+        org = org_res.scalar_one_or_none()
+        tenant_id = org.id if org else uuid.uuid4()
+
+        user = User(
+            tenant_id=tenant_id,
+            email=f"{req.name.lower().replace(' ', '.')}@interviewer.autergo.internal",
+            password_hash=get_password_hash("Interviewer@123"),
+            full_name=req.name.strip(),
+            role=req.role,
+            is_active=True
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    access_token = create_access_token(subject=user.id, tenant_id=user.tenant_id, role=req.role)
+    refresh_token = create_refresh_token(subject=user.id, tenant_id=user.tenant_id)
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user={
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": req.role,
+            "tenant_id": str(user.tenant_id)
+        }
+    )
+
+@router.get("/interviewers")
+async def list_available_interviewers(db: AsyncSession = Depends(get_db)):
+    stmt = select(User).where(User.role.in_(["l1_interviewer", "l2_interviewer", "recruiter", "admin"]))
+    res = await db.execute(stmt)
+    users = res.scalars().all()
+    return [{"id": str(u.id), "full_name": u.full_name, "role": u.role} for u in users]

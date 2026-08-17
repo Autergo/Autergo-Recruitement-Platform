@@ -383,3 +383,74 @@ async def submit_l2_evaluation(
     await db.commit()
 
     return {"status": app.status, "decision": meta["l2_decision"]}
+
+# ----------------------------------------------------
+# SCHEDULING ENDPOINTS (MANUAL & BULK)
+# ----------------------------------------------------
+
+class SingleScheduleRequest(BaseModel):
+    application_id: uuid.UUID
+    stage: str = "L1" # L1 or L2
+    interviewer_id: Optional[uuid.UUID] = None
+    slot_datetime: str
+    meeting_link: Optional[str] = "https://meet.autergo.internal"
+
+class BulkScheduleRequest(BaseModel):
+    application_ids: List[uuid.UUID]
+    stage: str = "L1" # L1 or L2
+    start_datetime: str
+    slot_duration_minutes: int = 45
+    meeting_link: Optional[str] = "https://meet.autergo.internal"
+
+@router.post("/schedule/single")
+async def schedule_single_interview(
+    req: SingleScheduleRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager", "recruiter", "admin"]))
+):
+    stmt = select(Application).where(Application.id == req.application_id)
+    res = await db.execute(stmt)
+    app = res.scalar_one_or_none()
+    if not app:
+        raise HTTPException(status_code=404, detail="Candidate application not found")
+
+    meta = dict(app.custom_field_values or {})
+    sched_key = f"{req.stage.lower()}_schedule"
+    meta[sched_key] = {
+        "slot_datetime": req.slot_datetime,
+        "interviewer_id": str(req.interviewer_id) if req.interviewer_id else None,
+        "meeting_link": req.meeting_link,
+        "scheduled_by": current_user.full_name,
+        "scheduled_at": datetime.utcnow().isoformat()
+    }
+    app.custom_field_values = meta
+    await db.commit()
+
+    return {"status": "scheduled", "application_id": str(app.id), "schedule": meta[sched_key]}
+
+@router.post("/schedule/bulk")
+async def schedule_bulk_interviews(
+    req: BulkScheduleRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["org_admin", "recruitment_manager", "recruiter", "admin"]))
+):
+    scheduled_count = 0
+    for app_id in req.application_ids:
+        stmt = select(Application).where(Application.id == app_id)
+        res = await db.execute(stmt)
+        app = res.scalar_one_or_none()
+        if app:
+            meta = dict(app.custom_field_values or {})
+            sched_key = f"{req.stage.lower()}_schedule"
+            meta[sched_key] = {
+                "start_datetime": req.start_datetime,
+                "meeting_link": req.meeting_link,
+                "scheduled_by": current_user.full_name,
+                "scheduled_at": datetime.utcnow().isoformat(),
+                "slot_duration_minutes": req.slot_duration_minutes
+            }
+            app.custom_field_values = meta
+            scheduled_count += 1
+
+    await db.commit()
+    return {"status": "bulk_scheduled", "total_scheduled": scheduled_count}

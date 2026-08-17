@@ -194,9 +194,9 @@ export default function DrivePipelineTrackingPage() {
               </div>
             </div>
 
-            {/* Online Test Audit */}
+            {/* Online Test & Geolocation Audit */}
             <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">1. Online Assessment Score</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">1. Online Assessment Score & Integrity</h3>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-400">Score Scored:</span>
                 <span className="font-bold text-emerald-400 font-mono">
@@ -207,6 +207,45 @@ export default function DrivePipelineTrackingPage() {
                 <span>Device Telemetry:</span>
                 <span className="capitalize">{selectedCandidate.profile_info?.device_type || 'Laptop'}</span>
               </div>
+              {selectedCandidate.profile_info?.geolocation && (
+                <div className="pt-2 text-xs font-mono text-slate-400 border-t border-slate-900 flex justify-between items-center">
+                  <span>📍 GPS Telemetry:</span>
+                  <span className="text-emerald-400 font-bold">
+                    {selectedCandidate.profile_info.geolocation.latitude?.toFixed(4)}, {selectedCandidate.profile_info.geolocation.longitude?.toFixed(4)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Recruiter Attempt Reactivation Action */}
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <span className="text-xs font-bold text-slate-300 block">Candidate Attempt Lock Control</span>
+              <p className="text-[11px] text-slate-500">
+                If the candidate faced technical issues or disconnection, you can re-enable their test session.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const token = localStorage.getItem('autergo_token');
+                  const res = await fetch(
+                    `http://localhost:8000/api/v1/drives/${driveId}/candidates/${selectedCandidate.application_id}/reactivate`,
+                    {
+                      method: 'POST',
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    }
+                  );
+                  if (res.ok) {
+                    alert('Candidate attempt reactivated successfully!');
+                    fetchCandidates();
+                    setSelectedCandidate(null);
+                  } else {
+                    alert('Could not reactivate candidate attempt.');
+                  }
+                }}
+                className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-xs transition-all shadow"
+              >
+                🔓 Reactivate / Unlock Candidate Attempt
+              </button>
             </div>
 
             {/* L1 Interview Audit */}
