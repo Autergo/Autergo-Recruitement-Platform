@@ -41,9 +41,71 @@ export default function UnifiedDashboard() {
     security_checks: 'PASSED (RBAC, Geolocation & Whitelist Enforced)',
   });
 
+  // Custom Roles State & Modal
+  const [customRoles, setCustomRoles] = useState<any[]>([]);
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [newRoleKey, setNewRoleKey] = useState('');
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleDescription, setNewRoleDescription] = useState('');
+  const [creatingRole, setCreatingRole] = useState(false);
+
   useEffect(() => {
-    if (activeRole === 'admin') fetchAdminUsers();
+    if (activeRole === 'admin') {
+      fetchAdminUsers();
+      fetchCustomRoles();
+    }
   }, [activeRole]);
+
+  const fetchCustomRoles = async () => {
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch('http://localhost:8000/api/v1/organizations/roles', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setCustomRoles(await res.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingRole(true);
+    try {
+      const token = localStorage.getItem('autergo_token');
+      const res = await fetch('http://localhost:8000/api/v1/organizations/roles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          role_key: newRoleKey.trim(),
+          role_name: newRoleName.trim(),
+          description: newRoleDescription.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        alert('Custom role created successfully!');
+        setShowCreateRoleModal(false);
+        setNewRoleKey('');
+        setNewRoleName('');
+        setNewRoleDescription('');
+        fetchCustomRoles();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to create custom role.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error creating role.');
+    } finally {
+      setCreatingRole(false);
+    }
+  };
 
   const fetchAdminUsers = async () => {
     try {
@@ -357,8 +419,8 @@ export default function UnifiedDashboard() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-base font-bold text-white">System User Role Allocations</h3>
-                  <p className="text-xs text-slate-400">Create and allocate accounts for Admins, Recruiters, and Interviewers.</p>
+                  <h3 className="text-base font-bold text-white">System User Accounts</h3>
+                  <p className="text-xs text-slate-400">Create and allocate accounts for Recruiters, Admins, and Evaluators.</p>
                 </div>
                 <button
                   type="button"
@@ -374,9 +436,9 @@ export default function UnifiedDashboard() {
                   <thead className="bg-slate-950 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                     <tr>
                       <th className="px-4 py-3">Full Name</th>
-                      <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3">Email Address</th>
                       <th className="px-4 py-3">Assigned Role</th>
-                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
@@ -389,11 +451,61 @@ export default function UnifiedDashboard() {
                             {u.role}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-emerald-400 font-bold">Active</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm(`Delete user ${u.full_name}?`)) return;
+                              const token = localStorage.getItem('autergo_token');
+                              const res = await fetch(`http://localhost:8000/api/v1/organizations/users/${u.id}`, {
+                                method: 'DELETE',
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                              });
+                              if (res.ok) {
+                                alert('User deleted.');
+                                fetchAdminUsers();
+                              } else {
+                                alert('Could not delete user.');
+                              }
+                            }}
+                            className="text-xs text-rose-400 hover:text-rose-300 font-bold"
+                          >
+                            Delete
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* Admin Custom Roles Configuration */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-bold text-white">Configured RBAC Roles</h3>
+                  <p className="text-xs text-slate-400">Manage role definitions, permissions, and create custom tenant roles.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateRoleModal(true)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow transition-all"
+                >
+                  + Create Custom Role
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {customRoles.map((r) => (
+                  <div key={r.role_key} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-indigo-400">{r.role_name}</span>
+                      <code className="text-[10px] font-mono text-slate-500">{r.role_key}</code>
+                    </div>
+                    <p className="text-xs text-slate-400">{r.description}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
@@ -763,12 +875,13 @@ export default function UnifiedDashboard() {
                 <select
                   value={newRole}
                   onChange={(e: any) => setNewRole(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white capitalize"
                 >
-                  <option value="recruiter">Recruiter (Campaign & Whitelist Manager)</option>
-                  <option value="admin">System Admin (Full Governance)</option>
-                  <option value="l1_interviewer">L1 Technical Interviewer</option>
-                  <option value="l2_interviewer">L2 Panel Interviewer</option>
+                  {customRoles.map((r) => (
+                    <option key={r.role_key} value={r.role_key}>
+                      {r.role_name} ({r.role_key})
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -786,6 +899,73 @@ export default function UnifiedDashboard() {
                   className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs disabled:opacity-50"
                 >
                   {creatingUser ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Custom Role Modal (Admin) */}
+      {showCreateRoleModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-bold text-white">Create Custom Platform Role</h3>
+              <button onClick={() => setShowCreateRoleModal(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateRole} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Role Unique Key *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. senior_lead_recruiter"
+                  value={newRoleKey}
+                  onChange={(e) => setNewRoleKey(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-emerald-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Display Role Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Senior Lead Recruiter"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Role Description *</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Describe the scope and permissions for this role..."
+                  value={newRoleDescription}
+                  onChange={(e) => setNewRoleDescription(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateRoleModal(false)}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingRole}
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs disabled:opacity-50"
+                >
+                  {creatingRole ? 'Creating...' : 'Save Custom Role'}
                 </button>
               </div>
             </form>
